@@ -47,6 +47,90 @@
             padding: 0.375rem 0.75rem;
         }
         .badge svg { width: 14px; height: 14px; }
+        .difficulty-section {
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .difficulty-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #525252;
+            margin-bottom: 0.75rem;
+        }
+        .difficulty-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+        .difficulty-btn {
+            padding: 0.625rem 1.25rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #737373;
+            background: white;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Inter', -apple-system, sans-serif;
+        }
+        .difficulty-btn:hover {
+            border-color: #d4d4d4;
+            color: #525252;
+        }
+        .difficulty-btn.active {
+            background: #171717;
+            color: white;
+            border-color: #171717;
+        }
+        .difficulty-btn.easy.active {
+            background: #22c55e;
+            border-color: #22c55e;
+        }
+        .difficulty-btn.hard.active {
+            background: #ef4444;
+            border-color: #ef4444;
+        }
+        .demo-box {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: white;
+            border: 1.5px solid #e5e5e5;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        .demo-box.easy {
+            border-color: #22c55e;
+            background: #f0fdf4;
+        }
+        .demo-box.normal {
+            border-color: #171717;
+            background: #fafafa;
+        }
+        .demo-box.hard {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+        .demo-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #a3a3a3;
+            margin-bottom: 0.5rem;
+        }
+        .demo-content {
+            font-size: 0.875rem;
+            color: #525252;
+            line-height: 1.6;
+        }
+        .demo-content code {
+            background: #f5f5f5;
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.8125rem;
+        }
         footer {
             position: fixed;
             bottom: 1.5rem;
@@ -59,6 +143,23 @@
     <div class="container">
         <h1>arcade</h1>
         <p class="description">Retro browser games — tetris, snake, breakout, and whatever you dream up next.</p>
+
+        <div class="difficulty-section">
+            <div class="difficulty-label">Choose Your Difficulty</div>
+            <div class="difficulty-buttons">
+                <button class="difficulty-btn easy" data-difficulty="easy">Easy</button>
+                <button class="difficulty-btn normal" data-difficulty="normal">Normal</button>
+                <button class="difficulty-btn hard" data-difficulty="hard">Hard</button>
+            </div>
+        </div>
+
+        <div class="demo-box" id="difficultyDemo">
+            <div class="demo-title">Difficulty Settings Demo</div>
+            <div class="demo-content">
+                Select a difficulty to see how games will be configured.
+            </div>
+        </div>
+
         <span class="badge">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="3"/>
@@ -69,5 +170,75 @@
         </span>
     </div>
     <footer>Powered by Bloom</footer>
+
+    <script type="module">
+        import { getDifficulty, setDifficulty, getDifficultyConfig } from './utils/difficulty.js';
+
+        // Update demo box based on difficulty
+        function updateDemo(difficulty) {
+            const demoBox = document.getElementById('difficultyDemo');
+            const demoContent = demoBox.querySelector('.demo-content');
+
+            // Update box styling
+            demoBox.className = `demo-box ${difficulty}`;
+
+            // Get example configs for different games
+            const snakeConfig = getDifficultyConfig('snake', difficulty);
+            const tetrisConfig = getDifficultyConfig('tetris', difficulty);
+            const breakoutConfig = getDifficultyConfig('breakout', difficulty);
+
+            // Update content with example configs
+            const descriptions = {
+                easy: 'Relaxed gameplay with slower speeds and more forgiving settings.',
+                normal: 'Balanced gameplay for a classic arcade experience.',
+                hard: 'Fast-paced action for experienced players seeking a challenge.'
+            };
+
+            demoContent.innerHTML = `
+                <p style="margin-bottom: 0.75rem;">${descriptions[difficulty]}</p>
+                <p style="font-size: 0.8125rem; color: #737373;">
+                    <strong>Snake:</strong> speed ${snakeConfig.speed}ms &nbsp;|&nbsp;
+                    <strong>Tetris:</strong> fall ${tetrisConfig.fallSpeed}ms &nbsp;|&nbsp;
+                    <strong>Breakout:</strong> paddle ${breakoutConfig.paddleWidth}px
+                </p>
+            `;
+        }
+
+        // Initialize difficulty buttons
+        function initDifficulty() {
+            const currentDifficulty = getDifficulty();
+            const buttons = document.querySelectorAll('.difficulty-btn');
+
+            // Set initial active state and update demo
+            buttons.forEach(btn => {
+                if (btn.dataset.difficulty === currentDifficulty) {
+                    btn.classList.add('active');
+                }
+
+                // Add click handler
+                btn.addEventListener('click', () => {
+                    const difficulty = btn.dataset.difficulty;
+
+                    // Update localStorage
+                    if (setDifficulty(difficulty)) {
+                        // Update UI
+                        buttons.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+
+                        // Update demo box
+                        updateDemo(difficulty);
+
+                        console.log(`Difficulty set to: ${difficulty}`);
+                    }
+                });
+            });
+
+            // Initialize demo with current difficulty
+            updateDemo(currentDifficulty);
+        }
+
+        // Initialize on page load
+        initDifficulty();
+    </script>
 </body>
 </html>
