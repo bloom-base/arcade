@@ -6,23 +6,45 @@
     <title>arcade</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
             font-family: 'Inter', -apple-system, sans-serif;
             background: #fafafa;
             color: #171717;
             min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ── Screens ─────────────────────────────────────── */
+        .screen {
+            position: fixed;
+            inset: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.45s ease;
         }
+
+        /* ── Screen 1 : Difficulty ────────────────────────── */
+        #difficulty-screen {
+            background: #fafafa;
+        }
+        #difficulty-screen.exit {
+            transform: translateX(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
         .container {
             text-align: center;
             max-width: 480px;
             padding: 2rem;
+            width: 100%;
         }
         h1 {
             font-size: 2rem;
@@ -45,12 +67,11 @@
             border: 1px solid #e5e5e5;
             border-radius: 999px;
             padding: 0.375rem 0.75rem;
+            margin-top: 2rem;
         }
         .badge svg { width: 14px; height: 14px; }
-        .difficulty-section {
-            margin-top: 2.5rem;
-            margin-bottom: 1rem;
-        }
+
+        .difficulty-section { margin-top: 2.5rem; }
         .difficulty-label {
             font-size: 0.875rem;
             font-weight: 500;
@@ -74,72 +95,189 @@
             transition: all 0.2s ease;
             font-family: 'Inter', -apple-system, sans-serif;
         }
-        .difficulty-btn:hover {
-            border-color: #d4d4d4;
-            color: #525252;
-        }
-        .difficulty-btn.active {
-            background: #171717;
-            color: white;
-            border-color: #171717;
-        }
-        .difficulty-btn.easy.active {
-            background: #22c55e;
-            border-color: #22c55e;
-        }
-        .difficulty-btn.hard.active {
-            background: #ef4444;
-            border-color: #ef4444;
-        }
-        .demo-box {
+        .difficulty-btn:hover { border-color: #d4d4d4; color: #525252; }
+        .difficulty-btn.active { background: #171717; color: white; border-color: #171717; }
+        .difficulty-btn.easy.active  { background: #22c55e; border-color: #22c55e; }
+        .difficulty-btn.hard.active  { background: #ef4444; border-color: #ef4444; }
+
+        /* Retro "select game" button */
+        .play-btn {
             margin-top: 2rem;
-            padding: 1.5rem;
-            background: white;
-            border: 1.5px solid #e5e5e5;
-            border-radius: 12px;
-            transition: all 0.3s ease;
+            padding: 0.875rem 2.5rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.65rem;
+            color: #171717;
+            background: transparent;
+            border: 2px solid #171717;
+            cursor: pointer;
+            letter-spacing: 0.08em;
+            outline: none;
+            transition: background 0.15s, color 0.15s, box-shadow 0.15s, transform 0.1s;
         }
-        .demo-box.easy {
-            border-color: #22c55e;
-            background: #f0fdf4;
+        .play-btn:hover {
+            background: #171717;
+            color: #fafafa;
+            box-shadow: 4px 4px 0 #525252;
         }
-        .demo-box.normal {
-            border-color: #171717;
-            background: #fafafa;
+        .play-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 #525252;
         }
-        .demo-box.hard {
-            border-color: #ef4444;
-            background: #fef2f2;
+
+        /* ── Screen 2 : Game Selection ────────────────────── */
+        #game-screen {
+            background: #0a0a0a;
+            transform: translateX(100%);
+            opacity: 0;
+            pointer-events: none;
+            overflow-y: auto;
+            padding: 4.5rem 1.5rem 2.5rem;
+            justify-content: flex-start;
         }
-        .demo-title {
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
+        #game-screen.enter {
+            transform: translateX(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* CRT scanline overlay */
+        #game-screen::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent 0,   transparent 3px,
+                rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
+            );
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* Back button */
+        .back-btn {
+            position: fixed;
+            top: 1.25rem;
+            left: 1.25rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+            color: #444;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 0.875rem;
+            cursor: pointer;
             letter-spacing: 0.05em;
-            color: #a3a3a3;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+        }
+        .back-btn:hover { color: #fafafa; border-color: #555; }
+
+        .game-screen-content {
+            width: 100%;
+            max-width: 660px;
+            margin: 0 auto;
+        }
+
+        .game-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .game-screen-title {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(0.7rem, 2.5vw, 1.05rem);
+            color: #fafafa;
+            letter-spacing: 0.1em;
+            text-shadow: 0 0 28px rgba(255,255,255,0.2);
+            margin-bottom: 1rem;
+        }
+        .diff-badge {
+            display: inline-block;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.45rem;
+            padding: 0.4rem 0.875rem;
+            letter-spacing: 0.15em;
+        }
+        .diff-badge.easy   { color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+        .diff-badge.normal { color: #a3a3a3; border: 1px solid #2a2a2a; }
+        .diff-badge.hard   { color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+
+        /* Game card grid */
+        .game-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 480px) {
+            .game-grid { grid-template-columns: 1fr; }
+            .game-screen-title { font-size: 0.65rem; }
+        }
+
+        .game-card {
+            display: block;
+            text-decoration: none;
+            background: #111;
+            border: 2px solid #1e1e1e;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            /* --color and --glow are set inline per card */
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        /* Pixel corner accent — top-left lit pixel on hover */
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 8px; height: 8px;
+            background: var(--color);
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 2;
+        }
+        .game-card:hover {
+            transform: translateY(-5px) scale(1.025);
+            border-color: var(--color);
+            box-shadow: 0 0 22px var(--glow), 0 12px 32px rgba(0,0,0,0.55);
+        }
+        .game-card:hover::before { opacity: 1; }
+        .game-card:active { transform: translateY(-2px) scale(1.01); }
+
+        .card-thumb {
+            width: 100%;
+            display: block;
+            image-rendering: pixelated;
+            aspect-ratio: 128 / 80;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .card-body { padding: 0.875rem; }
+        .card-name {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.58rem;
+            color: var(--color);
+            letter-spacing: 0.06em;
             margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px var(--glow);
         }
-        .demo-content {
-            font-size: 0.875rem;
-            color: #525252;
-            line-height: 1.6;
+        .card-desc {
+            font-size: 0.7rem;
+            color: #4a4a4a;
+            line-height: 1.5;
         }
-        .demo-content code {
-            background: #f5f5f5;
-            padding: 0.125rem 0.375rem;
-            border-radius: 4px;
-            font-family: 'SF Mono', Monaco, monospace;
-            font-size: 0.8125rem;
-        }
+
         footer {
             position: fixed;
-            bottom: 1.5rem;
+            bottom: 1.25rem;
             font-size: 0.75rem;
             color: #d4d4d4;
         }
+        #game-footer { color: #2a2a2a; }
     </style>
 </head>
 <body>
+
+<!-- ── Screen 1 : Difficulty ──────────────────────────────── -->
+<div id="difficulty-screen" class="screen">
     <div class="container">
         <h1>arcade</h1>
         <p class="description">Retro browser games — tetris, snake, breakout, and whatever you dream up next.</p>
@@ -147,18 +285,13 @@
         <div class="difficulty-section">
             <div class="difficulty-label">Choose Your Difficulty</div>
             <div class="difficulty-buttons">
-                <button class="difficulty-btn easy" data-difficulty="easy">Easy</button>
+                <button class="difficulty-btn easy"   data-difficulty="easy">Easy</button>
                 <button class="difficulty-btn normal" data-difficulty="normal">Normal</button>
-                <button class="difficulty-btn hard" data-difficulty="hard">Hard</button>
+                <button class="difficulty-btn hard"   data-difficulty="hard">Hard</button>
             </div>
         </div>
 
-        <div class="demo-box" id="difficultyDemo">
-            <div class="demo-title">Difficulty Settings Demo</div>
-            <div class="demo-content">
-                Select a difficulty to see how games will be configured.
-            </div>
-        </div>
+        <button class="play-btn" id="playBtn">SELECT GAME →</button>
 
         <span class="badge">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -170,75 +303,198 @@
         </span>
     </div>
     <footer>Powered by Bloom</footer>
+</div>
 
-    <script type="module">
-        import { getDifficulty, setDifficulty, getDifficultyConfig } from './utils/difficulty.js';
+<!-- ── Screen 2 : Game Selection ──────────────────────────── -->
+<div id="game-screen" class="screen">
+    <button class="back-btn" id="backBtn">← BACK</button>
 
-        // Update demo box based on difficulty
-        function updateDemo(difficulty) {
-            const demoBox = document.getElementById('difficultyDemo');
-            const demoContent = demoBox.querySelector('.demo-content');
+    <div class="game-screen-content">
+        <div class="game-header">
+            <div class="game-screen-title">CHOOSE YOUR GAME</div>
+            <div class="diff-badge" id="diffBadge">NORMAL</div>
+        </div>
+        <div class="game-grid" id="gameGrid">
+            <!-- Injected by JS -->
+        </div>
+    </div>
 
-            // Update box styling
-            demoBox.className = `demo-box ${difficulty}`;
+    <footer id="game-footer">Powered by Bloom</footer>
+</div>
 
-            // Get example configs for different games
-            const snakeConfig = getDifficultyConfig('snake', difficulty);
-            const tetrisConfig = getDifficultyConfig('tetris', difficulty);
-            const breakoutConfig = getDifficultyConfig('breakout', difficulty);
+<script type="module">
+import { getDifficulty, setDifficulty } from './utils/difficulty.js';
 
-            // Update content with example configs
-            const descriptions = {
-                easy: 'Relaxed gameplay with slower speeds and more forgiving settings.',
-                normal: 'Balanced gameplay for a classic arcade experience.',
-                hard: 'Fast-paced action for experienced players seeking a challenge.'
-            };
+/* ── Pixel-art SVG renderer ──────────────────────────────────
+   pixels: Array of [row, col, color]
+   Each cell is `sz` × `sz` pixels on a w × h canvas.
+*/
+function makeSVG(pixels, bg = '#0d0d0d', w = 128, h = 80, sz = 8) {
+    const rects = pixels
+        .map(([r, c, col]) =>
+            `<rect x="${c * sz}" y="${r * sz}" width="${sz}" height="${sz}" fill="${col}"/>`)
+        .join('');
+    return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" `
+         + `class="card-thumb" style="image-rendering:pixelated">`
+         + `<rect width="${w}" height="${h}" fill="${bg}"/>${rects}</svg>`;
+}
 
-            demoContent.innerHTML = `
-                <p style="margin-bottom: 0.75rem;">${descriptions[difficulty]}</p>
-                <p style="font-size: 0.8125rem; color: #737373;">
-                    <strong>Snake:</strong> speed ${snakeConfig.speed}ms &nbsp;|&nbsp;
-                    <strong>Tetris:</strong> fall ${tetrisConfig.fallSpeed}ms &nbsp;|&nbsp;
-                    <strong>Breakout:</strong> paddle ${breakoutConfig.paddleWidth}px
-                </p>
-            `;
-        }
+/* ── Pixel-art data  (16 cols × 10 rows @ 8 px each = 128 × 80) ── */
 
-        // Initialize difficulty buttons
-        function initDifficulty() {
-            const currentDifficulty = getDifficulty();
-            const buttons = document.querySelectorAll('.difficulty-btn');
+// Snake — an L-shaped winding body in green
+const G = '#22c55e', H = '#4ade80', F = '#ef4444';
+const snakePixels = [
+    // Horizontal body: row 1, cols 1-12  (tail → corner)
+    ...[1,2,3,4,5,6,7,8,9,10,11,12].map(c => [1, c, G]),
+    // Vertical descent: col 12, rows 2-6
+    ...[2,3,4,5,6].map(r => [r, 12, G]),
+    // Head (brighter): row 7, col 12 — facing down
+    [7, 12, H],
+    // Food dots scattered in the open field
+    [3, 4, F],
+    [5, 8, F],
+];
 
-            // Set initial active state and update demo
-            buttons.forEach(btn => {
-                if (btn.dataset.difficulty === currentDifficulty) {
-                    btn.classList.add('active');
-                }
+// Tetris — colourful stacked blocks + a falling T-piece
+const TC = '#22d3ee', TY = '#fbbf24', TG = '#22c55e', TR = '#ef4444', TM = '#e879f9';
+const tetrisPixels = [
+    // Falling cyan T-piece (top row + stem)
+    [0, 6, TC], [0, 7, TC], [0, 8, TC],
+    [1, 7, TC],
+    // Stack row 6 — full row (14 cols), pairs of contrasting colours
+    [6,0,TR],[6,1,TR],[6,2,TY],[6,3,TY],[6,4,TG],[6,5,TG],
+    [6,6,TC],[6,7,TC],[6,8,TM],[6,9,TM],[6,10,TR],[6,11,TR],
+    [6,12,TY],[6,13,TY],
+    // Stack row 7 — 11 cols
+    [7,0,TY],[7,1,TY],[7,2,TG],[7,3,TG],[7,4,TC],[7,5,TC],
+    [7,6,TR],[7,7,TR],[7,8,TM],[7,9,TM],[7,10,TY],
+    // Stack row 8 — 7 cols
+    [8,0,TG],[8,1,TG],[8,2,TM],[8,3,TM],[8,4,TY],[8,5,TY],[8,6,TC],
+    // Stack row 9 — 4 cols
+    [9,0,TR],[9,1,TR],[9,2,TC],[9,3,TC],
+];
 
-                // Add click handler
-                btn.addEventListener('click', () => {
-                    const difficulty = btn.dataset.difficulty;
+// Breakout — brick rows + ball + paddle
+const BW = '#f0f0f0', BR = '#ef4444', BO = '#f97316', BY = '#fbbf24';
+const breakoutPixels = [
+    // Red brick row 0: all 14 cols
+    ...[0,1,2,3,4,5,6,7,8,9,10,11,12,13].map(c => [0, c, BR]),
+    // Orange brick row 1: two bricks "missing" (already smashed)
+    ...[0,1,2,3,5,6,7,8,9,11,12,13].map(c => [1, c, BO]),
+    // Yellow brick row 2: several bricks missing — mid-game feel
+    ...[0,1,3,5,6,8,9,11,13].map(c => [2, c, BY]),
+    // Ball: row 5, col 7 (centre-ish, heading up)
+    [5, 7, BW],
+    // Paddle: row 8, cols 3-10 (wide white bar)
+    ...[3,4,5,6,7,8,9,10].map(c => [8, c, BW]),
+];
 
-                    // Update localStorage
-                    if (setDifficulty(difficulty)) {
-                        // Update UI
-                        buttons.forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
+// Pong — two paddles, dashed centre net, ball
+const PW = '#f0f0f0', PG = '#2e2e2e';
+const pongPixels = [
+    // Left paddle: col 1, rows 3-6
+    ...[3,4,5,6].map(r => [r, 1, PW]),
+    // Right paddle: col 14, rows 4-7
+    ...[4,5,6,7].map(r => [r, 14, PW]),
+    // Centre net: col 8, every other row (dashed)
+    ...[0,2,4,6,8].map(r => [r, 8, PG]),
+    // Ball: row 5, col 5
+    [5, 5, PW],
+];
 
-                        // Update demo box
-                        updateDemo(difficulty);
+/* ── Game definitions ──────────────────────────────────── */
+const GAMES = [
+    {
+        name: 'SNAKE',
+        desc: 'Eat, grow, and never bite yourself.',
+        href: 'snake.html',
+        color: '#22c55e',
+        glow:  'rgba(34,197,94,0.35)',
+        pixels: snakePixels,
+    },
+    {
+        name: 'TETRIS',
+        desc: 'Stack blocks, clear lines, survive the speed.',
+        href: 'tetris.html',
+        color: '#22d3ee',
+        glow:  'rgba(34,211,238,0.35)',
+        pixels: tetrisPixels,
+    },
+    {
+        name: 'BREAKOUT',
+        desc: 'Smash every brick before you run out of chances.',
+        href: 'breakout.html',
+        color: '#fbbf24',
+        glow:  'rgba(251,191,36,0.35)',
+        pixels: breakoutPixels,
+    },
+    {
+        name: 'PONG',
+        desc: 'The original arcade duel — two paddles, one ball.',
+        href: 'pong.html',
+        color: '#e879f9',
+        glow:  'rgba(232,121,249,0.35)',
+        pixels: pongPixels,
+    },
+];
 
-                        console.log(`Difficulty set to: ${difficulty}`);
-                    }
-                });
-            });
+/* ── Render cards ─────────────────────────────────────── */
+function renderCards() {
+    document.getElementById('gameGrid').innerHTML = GAMES.map(g => `
+        <a class="game-card" href="${g.href}"
+           style="--color:${g.color};--glow:${g.glow}">
+            ${makeSVG(g.pixels)}
+            <div class="card-body">
+                <div class="card-name">${g.name}</div>
+                <div class="card-desc">${g.desc}</div>
+            </div>
+        </a>
+    `).join('');
+}
 
-            // Initialize demo with current difficulty
-            updateDemo(currentDifficulty);
-        }
+/* ── Screen transitions ───────────────────────────────── */
+const diffScreen = document.getElementById('difficulty-screen');
+const gameScreen = document.getElementById('game-screen');
 
-        // Initialize on page load
-        initDifficulty();
-    </script>
+document.getElementById('playBtn').addEventListener('click', () => {
+    diffScreen.classList.add('exit');
+    gameScreen.classList.add('enter');
+});
+
+document.getElementById('backBtn').addEventListener('click', () => {
+    diffScreen.classList.remove('exit');
+    gameScreen.classList.remove('enter');
+});
+
+/* ── Difficulty initialisation ───────────────────────── */
+function updateBadge(level) {
+    const badge = document.getElementById('diffBadge');
+    badge.textContent = level.toUpperCase();
+    badge.className = `diff-badge ${level}`;
+}
+
+function initDifficulty() {
+    const current = getDifficulty();
+    const btns = document.querySelectorAll('.difficulty-btn');
+
+    btns.forEach(btn => {
+        if (btn.dataset.difficulty === current) btn.classList.add('active');
+        btn.addEventListener('click', () => {
+            const d = btn.dataset.difficulty;
+            if (setDifficulty(d)) {
+                btns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                updateBadge(d);
+            }
+        });
+    });
+
+    updateBadge(current);
+}
+
+/* ── Boot ─────────────────────────────────────────────── */
+renderCards();
+initDifficulty();
+</script>
 </body>
 </html>
