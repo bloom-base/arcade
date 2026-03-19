@@ -1,0 +1,9 @@
+.git
+.github
+.claude
+.claude.json
+.cache
+.npm
+*.md
+utils/difficulty.test.js
+example-integration.html
