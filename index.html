@@ -402,6 +402,23 @@ const pongPixels = [
     [5, 5, PW],
 ];
 
+// Othello — green board with black & white discs mid-game
+const OG = '#1b5e2a', OB = '#111111', OW = '#f0f0f0';
+const othelloPixels = [
+    // Board background: rows 1-8, cols 4-11
+    ...[1,2,3,4,5,6,7,8].flatMap(r => [4,5,6,7,8,9,10,11].map(c => [r, c, OG])),
+    // Mid-game discs — board cell (br,bc) → pixel (br+1, bc+4)
+    [3, 6, OB],  // (2,2) Black
+    [4, 6, OB],  // (3,2) Black
+    [4, 7, OW],  // (3,3) White
+    [5, 6, OB],  // (4,2) Black
+    [5, 7, OB],  // (4,3) Black
+    [5, 8, OW],  // (4,4) White
+    [6, 7, OW],  // (5,3) White
+    [6, 8, OW],  // (5,4) White
+    [6, 9, OW],  // (5,5) White
+];
+
 /* ── Game definitions ──────────────────────────────────── */
 const GAMES = [
     {
@@ -435,6 +452,14 @@ const GAMES = [
         color: '#e879f9',
         glow:  'rgba(232,121,249,0.35)',
         pixels: pongPixels,
+    },
+    {
+        name: 'OTHELLO',
+        desc: 'Outflank your rival and flip the board to your color.',
+        href: 'games/othello/index.html',
+        color: '#4ade80',
+        glow:  'rgba(74,222,128,0.35)',
+        pixels: othelloPixels,
     },
 ];
 

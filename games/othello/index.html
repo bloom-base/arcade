@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTHELLO — arcade</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a0a;
+            color: #fafafa;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* CRT scanline overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent 0, transparent 3px,
+                rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
+            );
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* ── Fixed buttons ─────────────────────── */
+        .back-btn {
+            position: fixed;
+            top: 1.25rem;
+            left: 1.25rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+            color: #444;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 0.875rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .back-btn:hover { color: #fafafa; border-color: #555; }
+
+        .mute-btn {
+            position: fixed;
+            top: 1.25rem;
+            right: 1.25rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+            color: #444;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 0.875rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+        }
+        .mute-btn:hover { color: #fafafa; border-color: #555; }
+        .mute-btn.muted  { color: #ef4444; border-color: #7f1d1d; }
+
+        /* ── Game wrapper ───────────────────────── */
+        #game-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        #title {
+            font-size: clamp(0.65rem, 3vw, 1rem);
+            letter-spacing: 0.25em;
+            color: #4ade80;
+            text-shadow: 0 0 24px rgba(74,222,128,0.55);
+        }
+
+        /* ── HUD ────────────────────────────────── */
+        #hud {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .player-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            border: 1px solid #252525;
+            font-size: clamp(0.38rem, 1.4vw, 0.52rem);
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+        .player-box.active {
+            border-color: #4ade80;
+            box-shadow: 0 0 14px rgba(74,222,128,0.28);
+        }
+
+        .disc-pip {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .disc-pip.black { background: #111; border: 1.5px solid #555; }
+        .disc-pip.white { background: #f0f0f0; box-shadow: 0 0 6px rgba(240,240,240,0.4); }
+
+        #status-text {
+            font-size: clamp(0.32rem, 1.1vw, 0.42rem);
+            color: #525252;
+            letter-spacing: 0.1em;
+            text-align: center;
+            min-width: 10ch;
+            min-height: 1.4em;
+        }
+
+        canvas {
+            display: block;
+            cursor: pointer;
+        }
+
+        /* ── Game Over overlay ─────────────────── */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.88);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            gap: 0.75rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+        #overlay.show { opacity: 1; pointer-events: auto; }
+
+        #overlay-winner {
+            font-size: clamp(0.85rem, 3.5vw, 1.3rem);
+            letter-spacing: 0.12em;
+            text-shadow: 0 0 30px currentColor;
+        }
+        #overlay-final {
+            font-size: clamp(0.38rem, 1.4vw, 0.52rem);
+            color: #737373;
+            letter-spacing: 0.12em;
+            margin-bottom: 0.75rem;
+        }
+
+        .menu-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(0.38rem, 1.4vw, 0.52rem);
+            padding: 0.7rem 1.6rem;
+            cursor: pointer;
+            letter-spacing: 0.08em;
+            transition: all 0.15s;
+            display: inline-block;
+        }
+        .menu-btn.primary {
+            background: #4ade80;
+            color: #0a0a0a;
+            border: none;
+        }
+        .menu-btn.primary:hover  { background: #22c55e; transform: scale(1.05); }
+        .menu-btn.primary:active { transform: scale(0.98); }
+        .menu-btn.secondary {
+            background: transparent;
+            color: #737373;
+            border: 1px solid #2a2a2a;
+            text-decoration: none;
+        }
+        .menu-btn.secondary:hover { color: #fafafa; border-color: #555; }
+    </style>
+</head>
+<body>
+
+<a class="back-btn" href="../../index.html">← BACK</a>
+<button class="mute-btn" id="muteBtn" title="M to toggle">♪ SFX</button>
+
+<div id="game-wrap">
+    <div id="title">OTHELLO</div>
+
+    <div id="hud">
+        <div class="player-box active" id="black-box">
+            <div class="disc-pip black"></div>
+            <span id="black-count">2</span>
+        </div>
+
+        <div id="status-text">BLACK'S TURN</div>
+
+        <div class="player-box" id="white-box">
+            <div class="disc-pip white"></div>
+            <span id="white-count">2</span>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+</div>
+
+<!-- Game Over Overlay -->
+<div id="overlay">
+    <div id="overlay-winner"></div>
+    <div id="overlay-final"></div>
+    <button class="menu-btn primary" id="newGameBtn">NEW GAME</button>
+    <a class="menu-btn secondary" href="../../index.html">← ARCADE</a>
+</div>
+
+<script type="module">
+import { getDifficulty } from '../../utils/difficulty.js';
+
+/* ═══════════════════════════════════════════════════════
+   Constants & Canvas Setup
+═══════════════════════════════════════════════════════ */
+const N   = 8;      // Board dimension
+const PAD = 26;     // Canvas padding
+
+// Responsive cell size
+const maxBoard = Math.min(
+    Math.floor(window.innerWidth  * 0.90),
+    Math.floor(window.innerHeight * 0.68) - 80
+);
+const CELL      = Math.max(38, Math.min(62, Math.floor((maxBoard - PAD * 2) / N)));
+const BOARD_PX  = CELL * N;
+const CANVAS_SZ = BOARD_PX + PAD * 2;
+
+const DIRS = [
+    [-1,-1], [-1, 0], [-1, 1],
+    [ 0,-1],          [ 0, 1],
+    [ 1,-1], [ 1, 0], [ 1, 1]
+];
+
+const CLR = {
+    bg:          '#0a0a0a',
+    boardFill:   '#1b5e2a',
+    boardLine:   '#165322',
+    boardBorder: '#0c3a18',
+    boardDot:    '#104020',
+    lastMove:    'rgba(255,255,160,0.28)',
+    hintDot:     'rgba(255,255,255,0.20)',
+};
+
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+canvas.width = canvas.height = CANVAS_SZ;
+
+/* ═══════════════════════════════════════════════════════
+   State
+═══════════════════════════════════════════════════════ */
+let board     = [];
+let curPlayer = 1;   // 1 = black, 2 = white
+let gameOver  = false;
+let muted     = false;
+let hoverR    = -1;
+let hoverC    = -1;
+let lastMove  = null;
+let skipMsg   = '';
+
+/* ═══════════════════════════════════════════════════════
+   Audio (Web Audio API — no external files)
+═══════════════════════════════════════════════════════ */
+let audioCtx = null;
+function ac() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+function tone(freq, type, dur, vol = 0.22, t0 = 0) {
+    if (muted) return;
+    try {
+        const c = ac();
+        const o = c.createOscillator();
+        const g = c.createGain();
+        o.connect(g); g.connect(c.destination);
+        o.type = type;
+        o.frequency.setValueAtTime(freq, c.currentTime + t0);
+        g.gain.setValueAtTime(vol, c.currentTime + t0);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + t0 + dur);
+        o.start(c.currentTime + t0);
+        o.stop(c.currentTime + t0 + dur + 0.05);
+    } catch (_) {}
+}
+
+const snd = {
+    move: (n) => {
+        tone(200, 'square', 0.07, 0.18);
+        if (n >= 3) tone(320, 'square', 0.09, 0.14, 0.06);
+        if (n >= 6) tone(440, 'square', 0.10, 0.12, 0.12);
+    },
+    skip: () => { tone(140, 'sawtooth', 0.16, 0.12); },
+    win:  () => {
+        tone(523, 'square', 0.13, 0.20, 0.00);
+        tone(659, 'square', 0.13, 0.20, 0.14);
+        tone(784, 'square', 0.20, 0.20, 0.28);
+        tone(1047,'square', 0.25, 0.20, 0.44);
+    },
+    tie:  () => {
+        tone(370, 'sawtooth', 0.14, 0.15);
+        tone(220, 'sawtooth', 0.18, 0.12, 0.18);
+    },
+};
+
+/* ═══════════════════════════════════════════════════════
+   Game Logic
+═══════════════════════════════════════════════════════ */
+function initBoard() {
+    board = Array.from({ length: N }, () => new Uint8Array(N));
+    // Standard Othello starting position
+    board[3][3] = 2; board[3][4] = 1;
+    board[4][3] = 1; board[4][4] = 2;
+    curPlayer = 1;
+    gameOver  = false;
+    lastMove  = null;
+    skipMsg   = '';
+}
+
+/**
+ * Returns array of [r,c] positions that would be flipped
+ * if `player` places at (r,c). Empty array = invalid move.
+ */
+function getFlips(r, c, player, b = board) {
+    if (b[r][c] !== 0) return [];
+    const opp = 3 - player;
+    const all = [];
+    for (const [dr, dc] of DIRS) {
+        const line = [];
+        let nr = r + dr, nc = c + dc;
+        while (nr >= 0 && nr < N && nc >= 0 && nc < N && b[nr][nc] === opp) {
+            line.push([nr, nc]);
+            nr += dr; nc += dc;
+        }
+        if (line.length > 0 && nr >= 0 && nr < N && nc >= 0 && nc < N && b[nr][nc] === player) {
+            all.push(...line);
+        }
+    }
+    return all;
+}
+
+/** All valid move positions for `player`. */
+function validMoves(player, b = board) {
+    const moves = [];
+    for (let r = 0; r < N; r++)
+        for (let c = 0; c < N; c++)
+            if (getFlips(r, c, player, b).length > 0) moves.push([r, c]);
+    return moves;
+}
+
+function countDiscs() {
+    let black = 0, white = 0;
+    for (let r = 0; r < N; r++)
+        for (let c = 0; c < N; c++) {
+            if (board[r][c] === 1) black++;
+            else if (board[r][c] === 2) white++;
+        }
+    return { black, white };
+}
+
+/** Place disc for current player at (r,c). No-op if invalid. */
+function place(r, c) {
+    if (gameOver) return;
+    const flips = getFlips(r, c, curPlayer);
+    if (flips.length === 0) return;
+
+    board[r][c] = curPlayer;
+    for (const [fr, fc] of flips) board[fr][fc] = curPlayer;
+    lastMove = [r, c];
+    snd.move(flips.length);
+
+    advanceTurn();
+    updateHUD();
+    draw();
+}
+
+/**
+ * Advance to the next turn after a move.
+ * Handles pass and game-over detection.
+ */
+function advanceTurn() {
+    const next    = 3 - curPlayer;
+    const nextCan = validMoves(next);
+    const curCan  = validMoves(curPlayer);
+
+    if (nextCan.length > 0) {
+        curPlayer = next;
+        skipMsg   = '';
+    } else if (curCan.length > 0) {
+        // Opponent must pass
+        const name = next === 1 ? 'BLACK' : 'WHITE';
+        skipMsg = `${name} PASSES`;
+        snd.skip();
+        // curPlayer keeps its turn
+    } else {
+        // Neither can move — game over
+        endGame();
+    }
+}
+
+function endGame() {
+    gameOver = true;
+    const { black, white } = countDiscs();
+
+    const winnerEl = document.getElementById('overlay-winner');
+    const finalEl  = document.getElementById('overlay-final');
+
+    if (black > white) {
+        winnerEl.textContent = 'BLACK WINS!';
+        winnerEl.style.color = '#d4d4d4';
+        snd.win();
+    } else if (white > black) {
+        winnerEl.textContent = 'WHITE WINS!';
+        winnerEl.style.color = '#f0f0f0';
+        snd.win();
+    } else {
+        winnerEl.textContent = "IT'S A DRAW!";
+        winnerEl.style.color = '#fbbf24';
+        snd.tie();
+    }
+
+    finalEl.textContent = `BLACK ${black}  ·  WHITE ${white}`;
+    document.getElementById('overlay').classList.add('show');
+}
+
+/* ═══════════════════════════════════════════════════════
+   HUD
+═══════════════════════════════════════════════════════ */
+function updateHUD() {
+    const { black, white } = countDiscs();
+    document.getElementById('black-count').textContent = black;
+    document.getElementById('white-count').textContent = white;
+
+    if (gameOver) return;
+
+    document.getElementById('black-box').classList.toggle('active', curPlayer === 1);
+    document.getElementById('white-box').classList.toggle('active', curPlayer === 2);
+
+    const st = document.getElementById('status-text');
+    if (skipMsg) {
+        st.textContent = skipMsg;
+    } else {
+        st.textContent = curPlayer === 1 ? "BLACK'S TURN" : "WHITE'S TURN";
+    }
+}
+
+/* ═══════════════════════════════════════════════════════
+   Rendering
+═══════════════════════════════════════════════════════ */
+function cellCenter(r, c) {
+    return [PAD + c * CELL + CELL / 2, PAD + r * CELL + CELL / 2];
+}
+
+function drawDisc(x, y, player) {
+    const r = CELL * 0.40;
+
+    if (player === 1) {
+        // ── Black disc ──────────────────────────
+        ctx.shadowColor    = 'rgba(0,0,0,0.65)';
+        ctx.shadowBlur     = 10;
+        ctx.shadowOffsetY  = 3;
+
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#111111';
+        ctx.fill();
+
+        ctx.shadowBlur = ctx.shadowOffsetY = 0;
+
+        // Subtle top-left highlight
+        const gB = ctx.createRadialGradient(x - r * 0.34, y - r * 0.34, 0, x, y, r);
+        gB.addColorStop(0, 'rgba(255,255,255,0.14)');
+        gB.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = gB;
+        ctx.fill();
+    } else {
+        // ── White disc ──────────────────────────
+        ctx.shadowColor    = 'rgba(255,255,255,0.40)';
+        ctx.shadowBlur     = 16;
+        ctx.shadowOffsetY  = 2;
+
+        const gW = ctx.createRadialGradient(x - r * 0.30, y - r * 0.34, r * 0.05, x + r * 0.08, y + r * 0.12, r);
+        gW.addColorStop(0, '#ffffff');
+        gW.addColorStop(1, '#b8b8b8');
+
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = gW;
+        ctx.fill();
+
+        ctx.shadowBlur = ctx.shadowOffsetY = 0;
+    }
+}
+
+function draw() {
+    ctx.clearRect(0, 0, CANVAS_SZ, CANVAS_SZ);
+
+    // ── Dark background
+    ctx.fillStyle = CLR.bg;
+    ctx.fillRect(0, 0, CANVAS_SZ, CANVAS_SZ);
+
+    // ── Board fill with glow
+    ctx.shadowColor = 'rgba(34, 197, 94, 0.20)';
+    ctx.shadowBlur  = 28;
+    ctx.fillStyle   = CLR.boardFill;
+    ctx.fillRect(PAD, PAD, BOARD_PX, BOARD_PX);
+    ctx.shadowBlur  = 0;
+
+    // ── Grid lines
+    ctx.strokeStyle = CLR.boardLine;
+    ctx.lineWidth   = 1;
+    for (let i = 0; i <= N; i++) {
+        const x = PAD + i * CELL;
+        const y = PAD + i * CELL;
+        ctx.beginPath(); ctx.moveTo(x, PAD);          ctx.lineTo(x, PAD + BOARD_PX); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(PAD, y);           ctx.lineTo(PAD + BOARD_PX, y); ctx.stroke();
+    }
+
+    // ── Board border
+    ctx.strokeStyle = CLR.boardBorder;
+    ctx.lineWidth   = 2.5;
+    ctx.strokeRect(PAD, PAD, BOARD_PX, BOARD_PX);
+
+    // ── Star / guide dots (classic Othello board at columns/rows 2 & 6)
+    ctx.fillStyle = CLR.boardDot;
+    for (const pr of [2, 6]) for (const pc of [2, 6]) {
+        const [dx, dy] = cellCenter(pr, pc);
+        ctx.beginPath(); ctx.arc(dx, dy, 3.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // ── Last-move highlight
+    if (lastMove) {
+        const [lr, lc] = lastMove;
+        ctx.fillStyle = CLR.lastMove;
+        ctx.fillRect(PAD + lc * CELL + 1, PAD + lr * CELL + 1, CELL - 2, CELL - 2);
+    }
+
+    // ── Valid move indicators
+    if (!gameOver) {
+        const moves   = validMoves(curPlayer);
+        const validSet = new Set(moves.map(([r, c]) => `${r},${c}`));
+
+        for (const [r, c] of moves) {
+            const [x, y]  = cellCenter(r, c);
+            const isHov   = r === hoverR && c === hoverC;
+            const hintR   = isHov ? CELL * 0.38 : CELL * 0.16;
+            const hintCol = isHov
+                ? (curPlayer === 1 ? 'rgba(15,15,15,0.72)' : 'rgba(245,245,245,0.72)')
+                : CLR.hintDot;
+
+            ctx.beginPath();
+            ctx.arc(x, y, hintR, 0, Math.PI * 2);
+            ctx.fillStyle = hintCol;
+            ctx.fill();
+        }
+    }
+
+    // ── Discs
+    for (let r = 0; r < N; r++)
+        for (let c = 0; c < N; c++)
+            if (board[r][c]) drawDisc(...cellCenter(r, c), board[r][c]);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Input
+═══════════════════════════════════════════════════════ */
+function boardCell(clientX, clientY) {
+    const rect   = canvas.getBoundingClientRect();
+    const scaleX = canvas.width  / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const cx     = (clientX - rect.left) * scaleX;
+    const cy     = (clientY - rect.top)  * scaleY;
+    const c      = Math.floor((cx - PAD) / CELL);
+    const r      = Math.floor((cy - PAD) / CELL);
+    if (r < 0 || r >= N || c < 0 || c >= N) return [-1, -1];
+    return [r, c];
+}
+
+canvas.addEventListener('mousemove', e => {
+    const [r, c] = boardCell(e.clientX, e.clientY);
+    if (r !== hoverR || c !== hoverC) { hoverR = r; hoverC = c; draw(); }
+});
+
+canvas.addEventListener('mouseleave', () => {
+    if (hoverR !== -1 || hoverC !== -1) { hoverR = hoverC = -1; draw(); }
+});
+
+canvas.addEventListener('click', e => {
+    if (gameOver) return;
+    const [r, c] = boardCell(e.clientX, e.clientY);
+    if (r >= 0) place(r, c);
+});
+
+canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (gameOver) return;
+    const t      = e.changedTouches[0];
+    const [r, c] = boardCell(t.clientX, t.clientY);
+    if (r >= 0) place(r, c);
+}, { passive: false });
+
+/* ── Keyboard shortcuts ──────────────────────────── */
+document.addEventListener('keydown', e => {
+    if (e.key === 'm' || e.key === 'M') toggleMute();
+    if (e.key === 'Escape') window.location.href = '../../index.html';
+});
+
+/* ── Buttons ─────────────────────────────────────── */
+document.getElementById('muteBtn').addEventListener('click', toggleMute);
+
+function toggleMute() {
+    muted = !muted;
+    const btn = document.getElementById('muteBtn');
+    btn.textContent = muted ? '✕ SFX' : '♪ SFX';
+    btn.classList.toggle('muted', muted);
+}
+
+document.getElementById('newGameBtn').addEventListener('click', () => {
+    document.getElementById('overlay').classList.remove('show');
+    initBoard();
+    updateHUD();
+    draw();
+});
+
+/* ═══════════════════════════════════════════════════════
+   Boot
+═══════════════════════════════════════════════════════ */
+initBoard();
+updateHUD();
+draw();
+</script>
+</body>
+</html>
