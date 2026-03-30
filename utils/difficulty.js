@@ -57,6 +57,11 @@ export function getDifficultyConfig(gameName, level = null) {
             easy: { ballSpeed: 3, paddleWidth: 120, lives: 5, scoreMultiplier: 1 },
             normal: { ballSpeed: 5, paddleWidth: 100, lives: 3, scoreMultiplier: 1.5 },
             hard: { ballSpeed: 7, paddleWidth: 80, lives: 3, scoreMultiplier: 2 }
+        },
+        pong: {
+            easy:   { ballSpeed: 4,   paddleSpeed: 4.8, paddleHeight: 90, accel: 1.03, maxSpeed: 12 },
+            normal: { ballSpeed: 5,   paddleSpeed: 4.2, paddleHeight: 70, accel: 1.05, maxSpeed: 15 },
+            hard:   { ballSpeed: 6.5, paddleSpeed: 3.6, paddleHeight: 55, accel: 1.07, maxSpeed: 18 },
         }
     };
 
