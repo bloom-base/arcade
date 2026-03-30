@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PONG — arcade</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a0a;
+            color: #fafafa;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* CRT scanline overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent 0, transparent 3px,
+                rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
+            );
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* ── Fixed buttons ─────────────────────── */
+        .back-btn {
+            position: fixed;
+            top: 1.25rem;
+            left: 1.25rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+            color: #444;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 0.875rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .back-btn:hover { color: #fafafa; border-color: #555; }
+
+        .mute-btn {
+            position: fixed;
+            top: 1.25rem;
+            right: 1.25rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+            color: #444;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 0.875rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+        }
+        .mute-btn:hover { color: #fafafa; border-color: #555; }
+        .mute-btn.muted { color: #ef4444; border-color: #7f1d1d; }
+
+        /* ── Game wrapper ───────────────────────── */
+        #game-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        #title {
+            font-size: clamp(0.65rem, 3vw, 1rem);
+            letter-spacing: 0.25em;
+            color: #e879f9;
+            text-shadow: 0 0 24px rgba(232,121,249,0.55);
+        }
+
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        /* ── Controls hint ─────────────────────── */
+        #controls-hint {
+            display: flex;
+            gap: 2.5rem;
+            font-size: clamp(0.28rem, 1vw, 0.38rem);
+            color: #383838;
+            letter-spacing: 0.08em;
+        }
+        #controls-hint span { display: flex; align-items: center; gap: 0.5rem; }
+        .hint-key {
+            display: inline-block;
+            border: 1px solid #2a2a2a;
+            padding: 0.15rem 0.35rem;
+            font-size: inherit;
+            color: #505050;
+        }
+
+        /* ── Countdown flash ───────────────────── */
+        #countdown {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 150;
+            font-size: clamp(3rem, 12vw, 5rem);
+            color: #fafafa;
+            text-shadow: 0 0 40px rgba(255,255,255,0.6);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        #countdown.show { opacity: 1; }
+
+        /* ── Game Over overlay ─────────────────── */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.88);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            gap: 0.75rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+        #overlay.show { opacity: 1; pointer-events: auto; }
+
+        #overlay-winner {
+            font-size: clamp(0.85rem, 3.5vw, 1.3rem);
+            letter-spacing: 0.12em;
+            text-shadow: 0 0 30px currentColor;
+        }
+        #overlay-final {
+            font-size: clamp(0.38rem, 1.4vw, 0.52rem);
+            color: #737373;
+            letter-spacing: 0.12em;
+            margin-bottom: 0.75rem;
+        }
+
+        .menu-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(0.38rem, 1.4vw, 0.52rem);
+            padding: 0.7rem 1.6rem;
+            cursor: pointer;
+            letter-spacing: 0.08em;
+            transition: all 0.15s;
+            display: inline-block;
+        }
+        .menu-btn.primary {
+            background: #e879f9;
+            color: #0a0a0a;
+            border: none;
+        }
+        .menu-btn.primary:hover {
+            background: #f0abfc;
+            transform: translateY(-1px);
+        }
+        .menu-btn.secondary {
+            background: transparent;
+            color: #737373;
+            border: 1px solid #333;
+            text-decoration: none;
+        }
+        .menu-btn.secondary:hover { color: #fafafa; border-color: #555; }
+    </style>
+</head>
+<body>
+
+<a class="back-btn" href="../../index.html">← BACK</a>
+<button class="mute-btn" id="muteBtn">♪ SFX</button>
+
+<div id="game-wrap">
+    <div id="title">PONG</div>
+    <canvas id="canvas"></canvas>
+    <div id="controls-hint">
+        <span><span class="hint-key">W</span><span class="hint-key">S</span> P1</span>
+        <span>P2 <span class="hint-key">↑</span><span class="hint-key">↓</span></span>
+    </div>
+</div>
+
+<div id="countdown"></div>
+
+<div id="overlay">
+    <div id="overlay-winner"></div>
+    <div id="overlay-final"></div>
+    <button class="menu-btn primary" id="newGameBtn">PLAY AGAIN</button>
+    <a class="menu-btn secondary" href="../../index.html">← ARCADE</a>
+</div>
+
+<script type="module">
+import { getDifficulty } from '../../utils/difficulty.js';
+
+// ── Audio ─────────────────────────────────────────────────
+let muted = false;
+let audioCtx = null;
+
+function getAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+
+function tone(freq, type, dur, vol = 0.2, delay = 0) {
+    if (muted) return;
+    try {
+        const ctx = getAudio();
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+        gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + dur);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + dur + 0.01);
+    } catch (_) {}
+}
+
+const sfx = {
+    paddle : () => tone(480, 'square',   0.055, 0.18),
+    wall   : () => tone(280, 'square',   0.055, 0.13),
+    score  : () => tone(160, 'sawtooth', 0.22,  0.20),
+    win    : () => {
+        [523, 659, 784, 1047].forEach((f, i) => tone(f, 'square', 0.14, 0.2, i * 0.13));
+    },
+};
+
+document.getElementById('muteBtn').addEventListener('click', () => {
+    muted = !muted;
+    const btn = document.getElementById('muteBtn');
+    btn.textContent = muted ? '✕ SFX' : '♪ SFX';
+    btn.classList.toggle('muted', muted);
+});
+
+// ── Difficulty ────────────────────────────────────────────
+const urlDiff = new URLSearchParams(location.search).get('difficulty')
+             || new URLSearchParams(location.search).get('d');
+const storedDiff = getDifficulty();
+const diffKey = ['easy','normal','hard'].includes(urlDiff) ? urlDiff : storedDiff;
+
+const DIFF = {
+    easy:   { ballSpeed: 4,   paddleSpeed: 4.8, paddleH: 90, accel: 1.03, maxSpeed: 12 },
+    normal: { ballSpeed: 5,   paddleSpeed: 4.2, paddleH: 70, accel: 1.05, maxSpeed: 15 },
+    hard:   { ballSpeed: 6.5, paddleSpeed: 3.6, paddleH: 55, accel: 1.07, maxSpeed: 18 },
+}[diffKey];
+
+// ── Canvas ────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+const CW = 800, CH = 500;
+canvas.width  = CW;
+canvas.height = CH;
+
+function resize() {
+    const maxW = window.innerWidth  - 32;
+    const maxH = window.innerHeight - 150;
+    const s = Math.min(maxW / CW, maxH / CH, 1.2);
+    canvas.style.width  = (CW * s) + 'px';
+    canvas.style.height = (CH * s) + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── Constants ─────────────────────────────────────────────
+const PW = 12, PH = DIFF.paddleH;
+const PAD_OFF = 20;          // distance from edge
+const BALL_R  = 7;
+const WIN_TO  = 11;
+const P1_COL  = '#22d3ee';   // cyan
+const P2_COL  = '#e879f9';   // magenta
+
+// ── State ─────────────────────────────────────────────────
+let p1Score = 0, p2Score = 0;
+let gameOver = false, paused = false;
+let rafId = null;
+
+const p1 = { x: PAD_OFF,            y: CH/2 - PH/2 };
+const p2 = { x: CW - PAD_OFF - PW,  y: CH/2 - PH/2 };
+const ball = { x: CW/2, y: CH/2, dx: 0, dy: 0, spd: DIFF.ballSpeed };
+
+// ── Helpers ───────────────────────────────────────────────
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+function launchBall(toRight = Math.random() > 0.5) {
+    ball.x   = CW / 2;
+    ball.y   = CH / 2;
+    ball.spd = DIFF.ballSpeed;
+    const angle = (Math.random() * 0.6 - 0.3) * Math.PI; // ±54°
+    const dir = toRight ? 1 : -1;
+    ball.dx = dir * Math.cos(angle) * ball.spd;
+    ball.dy = Math.sin(angle) * ball.spd;
+}
+
+function resetPaddles() {
+    p1.y = CH/2 - PH/2;
+    p2.y = CH/2 - PH/2;
+}
+
+// ── Input ─────────────────────────────────────────────────
+const keys = {};
+window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (['ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// ── Countdown ─────────────────────────────────────────────
+const cntEl = document.getElementById('countdown');
+
+function runCountdown(cb) {
+    paused = true;
+    let n = 3;
+    cntEl.textContent = n;
+    cntEl.classList.add('show');
+    const iv = setInterval(() => {
+        n--;
+        if (n > 0) {
+            cntEl.textContent = n;
+        } else {
+            clearInterval(iv);
+            cntEl.classList.remove('show');
+            cntEl.textContent = '';
+            paused = false;
+            cb();
+        }
+    }, 700);
+}
+
+// ── Collision ─────────────────────────────────────────────
+function hitPaddle(pad, side) {
+    const bL = ball.x - BALL_R, bR = ball.x + BALL_R;
+    const bT = ball.y - BALL_R, bB = ball.y + BALL_R;
+    const pL = pad.x, pR = pad.x + PW;
+    const pT = pad.y, pB = pad.y + PH;
+
+    if (bR < pL || bL > pR || bB < pT || bT > pB) return;
+
+    // Reflect & add spin based on hit position
+    const rel = (ball.y - (pT + PH / 2)) / (PH / 2); // -1 … +1
+    ball.spd = Math.min(ball.spd * DIFF.accel, DIFF.maxSpeed);
+    const angle = rel * (Math.PI / 3.5); // max ±51°
+    const dir = side === 'left' ? 1 : -1;
+    ball.dx = dir * Math.cos(angle) * ball.spd;
+    ball.dy = Math.sin(angle) * ball.spd;
+
+    // Push ball clear of paddle face
+    if (side === 'left') ball.x = pR + BALL_R + 1;
+    else                 ball.x = pL - BALL_R - 1;
+
+    sfx.paddle();
+}
+
+// ── Update ────────────────────────────────────────────────
+let lastTs = 0;
+
+function update(ts) {
+    const dt = Math.min((ts - lastTs) / 16.667, 3);
+    lastTs = ts;
+    if (paused || gameOver) return;
+
+    // Paddles
+    const ps = DIFF.paddleSpeed * dt;
+    if (keys['w'] || keys['W'])    p1.y -= ps;
+    if (keys['s'] || keys['S'])    p1.y += ps;
+    if (keys['ArrowUp'])           p2.y -= ps;
+    if (keys['ArrowDown'])         p2.y += ps;
+    p1.y = clamp(p1.y, 0, CH - PH);
+    p2.y = clamp(p2.y, 0, CH - PH);
+
+    // Ball
+    ball.x += ball.dx * dt;
+    ball.y += ball.dy * dt;
+
+    // Top / bottom wall
+    if (ball.y - BALL_R <= 0)  { ball.y = BALL_R;        ball.dy =  Math.abs(ball.dy); sfx.wall(); }
+    if (ball.y + BALL_R >= CH) { ball.y = CH - BALL_R;   ball.dy = -Math.abs(ball.dy); sfx.wall(); }
+
+    // Paddle collisions
+    hitPaddle(p1, 'left');
+    hitPaddle(p2, 'right');
+
+    // Scoring
+    if (ball.x + BALL_R < 0) {
+        p2Score++;
+        sfx.score();
+        afterPoint(true);
+    } else if (ball.x - BALL_R > CW) {
+        p1Score++;
+        sfx.score();
+        afterPoint(false);
+    }
+}
+
+function afterPoint(nextToRight) {
+    if (p1Score >= WIN_TO || p2Score >= WIN_TO) {
+        gameOver = true;
+        const winner = p1Score >= WIN_TO ? 'PLAYER 1' : 'PLAYER 2';
+        const col    = p1Score >= WIN_TO ? P1_COL : P2_COL;
+        showOverlay(`${winner} WINS!`, `${p1Score} — ${p2Score}`, col);
+        sfx.win();
+    } else {
+        resetPaddles();
+        paused = true;
+        launchBall(nextToRight);
+        setTimeout(() => { paused = false; }, 900);
+    }
+}
+
+// ── Draw ──────────────────────────────────────────────────
+function draw() {
+    // Background
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, CW, CH);
+
+    // Centre net
+    ctx.save();
+    ctx.setLineDash([14, 12]);
+    ctx.strokeStyle = '#252525';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(CW / 2, 0);
+    ctx.lineTo(CW / 2, CH);
+    ctx.stroke();
+    ctx.restore();
+
+    // Scores
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'top';
+    ctx.font = '52px "Press Start 2P", monospace';
+
+    ctx.fillStyle  = P1_COL;
+    ctx.shadowBlur  = 22;
+    ctx.shadowColor = P1_COL;
+    ctx.fillText(p1Score, CW / 4, 18);
+
+    ctx.fillStyle  = P2_COL;
+    ctx.shadowColor = P2_COL;
+    ctx.fillText(p2Score, 3 * CW / 4, 18);
+    ctx.shadowBlur = 0;
+
+    // Difficulty badge
+    ctx.font      = '8px "Press Start 2P", monospace';
+    ctx.fillStyle = '#252525';
+    ctx.fillText(diffKey.toUpperCase(), CW / 2, CH - 14);
+
+    // Paddle 1
+    ctx.fillStyle  = P1_COL;
+    ctx.shadowBlur  = 18;
+    ctx.shadowColor = P1_COL;
+    ctx.fillRect(p1.x, p1.y, PW, PH);
+
+    // Paddle 2
+    ctx.fillStyle  = P2_COL;
+    ctx.shadowColor = P2_COL;
+    ctx.fillRect(p2.x, p2.y, PW, PH);
+
+    // Ball
+    ctx.fillStyle  = '#ffffff';
+    ctx.shadowBlur  = 20;
+    ctx.shadowColor = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+}
+
+// ── Loop ──────────────────────────────────────────────────
+function loop(ts) {
+    update(ts);
+    draw();
+    rafId = requestAnimationFrame(loop);
+}
+
+// ── Overlay ───────────────────────────────────────────────
+const overlay       = document.getElementById('overlay');
+const overlayWinner = document.getElementById('overlay-winner');
+const overlayFinal  = document.getElementById('overlay-final');
+
+function showOverlay(title, sub, color) {
+    overlayWinner.textContent = title;
+    overlayWinner.style.color = color;
+    overlayFinal.textContent  = sub;
+    overlay.classList.add('show');
+}
+
+document.getElementById('newGameBtn').addEventListener('click', startGame);
+
+// ── Init ──────────────────────────────────────────────────
+function startGame() {
+    p1Score = 0;
+    p2Score = 0;
+    gameOver = false;
+    overlay.classList.remove('show');
+    resetPaddles();
+    launchBall();
+    paused = true;
+    setTimeout(() => { paused = false; }, 600);
+}
+
+startGame();
+lastTs = performance.now();
+if (rafId) cancelAnimationFrame(rafId);
+rafId = requestAnimationFrame(loop);
+</script>
+</body>
+</html>
