@@ -402,6 +402,26 @@ const pongPixels = [
     [5, 5, PW],
 ];
 
+// Solitaire — card backs (stock), face-up cards in tableau, foundation suits
+const SP = '#f472b6', SW2 = '#c8c8d8', SB2 = '#0f2444', SBC = '#1a3a6a', SR2 = '#ef4444';
+const solitairePixels = [
+    // Stock pile (top-left): face-down card, col 0-1, row 0-3
+    [0,0,SB2],[0,1,SB2],[1,0,SBC],[1,1,SB2],[2,0,SB2],[2,1,SBC],[3,0,SB2],[3,1,SB2],
+    // Foundation card (top-right): pink card with ♠, col 13-14, row 0-3
+    [0,13,SW2],[0,14,SW2],[1,13,SP],[1,14,SW2],[2,13,SW2],[2,14,SP],[3,13,SW2],[3,14,SW2],
+    // Tableau — 5 cascading columns (rows 5-9)
+    // Col A (face-down), cols 0-1
+    [5,0,SB2],[5,1,SB2],[6,0,SBC],[6,1,SB2],
+    // Col B (face-up red), cols 3-4
+    [5,3,SW2],[5,4,SW2],[6,3,SR2],[6,4,SW2],[7,3,SW2],[7,4,SW2],
+    // Col C (face-up pink/black), cols 6-7
+    [5,6,SW2],[5,7,SW2],[6,6,SW2],[6,7,SP],[7,6,SP],[7,7,SW2],[8,6,SW2],[8,7,SW2],
+    // Col D (face-up red), cols 9-10
+    [5,9,SW2],[5,10,SW2],[6,9,SW2],[6,10,SW2],[7,9,SR2],[7,10,SW2],[8,9,SW2],[8,10,SW2],[9,9,SW2],[9,10,SW2],
+    // Col E (face-down), cols 12-13
+    [5,12,SB2],[5,13,SB2],[6,12,SB2],[6,13,SBC],[7,12,SBC],[7,13,SB2],
+];
+
 /* ── Game definitions ──────────────────────────────────── */
 const GAMES = [
     {
@@ -435,6 +455,14 @@ const GAMES = [
         color: '#e879f9',
         glow:  'rgba(232,121,249,0.35)',
         pixels: pongPixels,
+    },
+    {
+        name: 'SOLITAIRE',
+        desc: 'Build the foundations, one card at a time.',
+        href: 'solitaire.html',
+        color: '#f472b6',
+        glow:  'rgba(244,114,182,0.35)',
+        pixels: solitairePixels,
     },
 ];
 
