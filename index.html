@@ -530,6 +530,25 @@ const solitairePixels = [
     [5,12,SB2],[5,13,SB2],[6,12,SB2],[6,13,SBC],[7,12,SBC],[7,13,SB2],
 ];
 
+// Simon — four coloured quadrants with highlight glints
+const SR = '#b01800', SB = '#002299', SG = '#006600', SY = '#aa7700';
+const SRL = '#ff5533', SBL = '#3366ff', SGL = '#22ee44', SYL = '#ffdd00';
+const simonPixels = [
+    // Red quadrant   (top-left:    rows 0-3, cols 0-6)
+    ...[0,1,2,3].flatMap(r => [0,1,2,3,4,5,6].map(c => [r, c, SR])),
+    // Blue quadrant  (top-right:   rows 0-3, cols 8-15)
+    ...[0,1,2,3].flatMap(r => [8,9,10,11,12,13,14,15].map(c => [r, c, SB])),
+    // Green quadrant (bottom-left: rows 5-9, cols 0-6)
+    ...[5,6,7,8,9].flatMap(r => [0,1,2,3,4,5,6].map(c => [r, c, SG])),
+    // Yellow quadrant(bottom-right:rows 5-9, cols 8-15)
+    ...[5,6,7,8,9].flatMap(r => [8,9,10,11,12,13,14,15].map(c => [r, c, SY])),
+    // Highlight glints (upper-left corner of each quadrant)
+    [0,1,SRL],[0,2,SRL],[1,1,SRL],
+    [0,9,SBL],[0,10,SBL],[1,9,SBL],
+    [5,1,SGL],[5,2,SGL],[6,1,SGL],
+    [5,9,SYL],[5,10,SYL],[6,9,SYL],
+];
+
 /* ── Game definitions ──────────────────────────────────── */
 const GAMES = [
     {
@@ -579,6 +598,14 @@ const GAMES = [
         color: '#f472b6',
         glow:  'rgba(244,114,182,0.35)',
         pixels: solitairePixels,
+    },
+    {
+        name: 'SIMON',
+        desc: 'Repeat the flashing sequence before it outruns your memory.',
+        href: 'games/simon/index.html',
+        color: '#f97316',
+        glow:  'rgba(249,115,22,0.35)',
+        pixels: simonPixels,
     },
 ];
 
