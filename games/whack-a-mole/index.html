@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WHACK-A-MOLE — arcade</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a0a;
+            color: #fafafa;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* CRT scanline overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent 0, transparent 3px,
+                rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
+            );
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* ── Fixed buttons ──────────────────────────────── */
+        .back-btn {
+            position: fixed;
+            top: 1.25rem;
+            left: 1.25rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+            color: #444;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 0.875rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .back-btn:hover { color: #fafafa; border-color: #555; }
+
+        .mute-btn {
+            position: fixed;
+            top: 1.25rem;
+            right: 1.25rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+            color: #444;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 0.875rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+        }
+        .mute-btn:hover { color: #fafafa; border-color: #555; }
+        .mute-btn.muted { color: #ef4444; border-color: #7f1d1d; }
+
+        /* ── Game wrapper ──────────────────────────────── */
+        #game-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: clamp(0.75rem, 2vh, 1.25rem);
+        }
+
+        #title {
+            font-size: clamp(0.6rem, 3vw, 1rem);
+            letter-spacing: 0.25em;
+            color: #ef4444;
+            text-shadow: 0 0 24px rgba(239,68,68,0.6);
+        }
+
+        /* ── HUD ───────────────────────────────────────── */
+        #hud {
+            display: flex;
+            gap: clamp(1.5rem, 5vw, 3rem);
+        }
+
+        .hud-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .hud-label {
+            font-size: clamp(0.3rem, 1.2vw, 0.42rem);
+            color: #555;
+            letter-spacing: 0.1em;
+        }
+        .hud-value {
+            font-size: clamp(0.5rem, 2.2vw, 0.75rem);
+            color: #fafafa;
+            letter-spacing: 0.05em;
+            min-width: 3ch;
+            text-align: center;
+        }
+        #timer-val { color: #ef4444; }
+        #timer-val.urgent {
+            color: #ef4444;
+            animation: urgentPulse 0.5s steps(1) infinite;
+        }
+
+        @keyframes urgentPulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.35; }
+        }
+
+        /* ── Diff badge ────────────────────────────────── */
+        #diff-badge {
+            font-size: clamp(0.28rem, 1vw, 0.38rem);
+            color: #444;
+            letter-spacing: 0.12em;
+        }
+
+        /* ── Mole field ────────────────────────────────── */
+        #field {
+            background: linear-gradient(160deg, #4a2610 0%, #2d1508 100%);
+            border-radius: clamp(0.5rem, 2vw, 1rem);
+            padding: clamp(0.75rem, 3vw, 1.5rem);
+            border: 2px solid #1a0c04;
+            box-shadow:
+                0 0 40px rgba(239,68,68,0.12),
+                0 6px 28px rgba(0,0,0,0.7);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: clamp(0.6rem, 2.5vw, 1.1rem);
+        }
+
+        /* ── Individual hole ───────────────────────────── */
+        .hole {
+            width:  clamp(70px, 16vw, 110px);
+            height: clamp(70px, 16vw, 110px);
+            border-radius: 50%;
+            background: radial-gradient(ellipse at 40% 35%, #1f0e03 25%, #0a0400 75%);
+            position: relative;
+            overflow: hidden;
+            border: 3px solid #1a0a02;
+            box-shadow:
+                inset 0 4px 18px rgba(0,0,0,0.95),
+                inset 0 -2px 6px rgba(92,50,21,0.3);
+            cursor: pointer;
+            transition: box-shadow 0.1s;
+        }
+        .hole:hover {
+            box-shadow:
+                inset 0 4px 18px rgba(0,0,0,0.95),
+                inset 0 -2px 6px rgba(92,50,21,0.3),
+                0 0 12px rgba(239,68,68,0.2);
+        }
+
+        /* Mole character */
+        .mole {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(110%);
+            width: 80%;
+            transition: transform 0.13s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .hole.up .mole {
+            transform: translateX(-50%) translateY(16%);
+        }
+
+        .hole.whacked .mole {
+            transform: translateX(-50%) translateY(10%) scale(0.72) rotate(-14deg);
+            filter: brightness(2.5) saturate(0.1);
+            transition: transform 0.08s ease-out, filter 0.08s;
+        }
+
+        /* Dirt rim — sits in front of mole, creates emergence illusion */
+        .dirt-rim {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 34%;
+            background: radial-gradient(ellipse at center bottom,
+                #5c3215 0%, #3d1f0a 55%, transparent 100%);
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        /* Score pop-up */
+        .score-popup {
+            position: absolute;
+            top: 12%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(0.38rem, 1.4vw, 0.55rem);
+            color: #ef4444;
+            text-shadow: 0 0 10px rgba(239,68,68,0.9);
+            animation: floatUp 0.55s ease-out forwards;
+            pointer-events: none;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        @keyframes floatUp {
+            0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-22px); }
+        }
+
+        /* ── Overlay ───────────────────────────────────── */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.88);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            gap: 0.75rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+        #overlay.show { opacity: 1; pointer-events: auto; }
+
+        #overlay-title {
+            font-size: clamp(0.85rem, 3.5vw, 1.3rem);
+            letter-spacing: 0.12em;
+            color: #ef4444;
+            text-shadow: 0 0 30px rgba(239,68,68,0.7);
+        }
+        #overlay-score {
+            font-size: clamp(0.5rem, 2vw, 0.75rem);
+            color: #fafafa;
+            letter-spacing: 0.1em;
+        }
+        #overlay-sub {
+            font-size: clamp(0.35rem, 1.3vw, 0.5rem);
+            color: #666;
+            letter-spacing: 0.12em;
+            margin-bottom: 0.5rem;
+        }
+
+        .menu-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(0.38rem, 1.4vw, 0.52rem);
+            padding: 0.7rem 1.6rem;
+            cursor: pointer;
+            letter-spacing: 0.08em;
+            transition: all 0.15s;
+            display: inline-block;
+        }
+        .menu-btn.primary {
+            background: #ef4444;
+            color: #0a0a0a;
+            border: none;
+        }
+        .menu-btn.primary:hover {
+            background: #f87171;
+            transform: translateY(-1px);
+            box-shadow: 0 0 20px rgba(239,68,68,0.5);
+        }
+        .menu-btn.secondary {
+            background: transparent;
+            color: #666;
+            border: 1px solid #333;
+            text-decoration: none;
+        }
+        .menu-btn.secondary:hover { color: #fafafa; border-color: #555; }
+    </style>
+</head>
+<body>
+
+<a class="back-btn" href="../../index.html">← BACK</a>
+<button class="mute-btn" id="muteBtn">♪ SFX</button>
+
+<div id="game-wrap">
+    <div id="title">WHACK-A-MOLE</div>
+
+    <div id="hud">
+        <div class="hud-item">
+            <div class="hud-label">SCORE</div>
+            <div class="hud-value" id="score-val">0</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">TIME</div>
+            <div class="hud-value" id="timer-val">30</div>
+        </div>
+        <div class="hud-item">
+            <div class="hud-label">BEST</div>
+            <div class="hud-value" id="best-val">–</div>
+        </div>
+    </div>
+
+    <div id="field">
+        <!-- 9 holes injected by JS -->
+    </div>
+
+    <div id="diff-badge"></div>
+</div>
+
+<div id="overlay" class="show">
+    <div id="overlay-title">WHACK-A-MOLE</div>
+    <div id="overlay-score" style="display:none"></div>
+    <div id="overlay-sub">TAP MOLES BEFORE THEY HIDE!</div>
+    <button class="menu-btn primary" id="startBtn">START GAME</button>
+    <a class="menu-btn secondary" href="../../index.html">← ARCADE</a>
+</div>
+
+<script type="module">
+import { getDifficulty }                           from '../../utils/difficulty.js';
+import { saveScore, getScores,
+         playHighScoreChime, showHighScoreBanner } from '../../utils/scores.js';
+
+// ── Audio ──────────────────────────────────────────────────────────────────
+let muted    = false;
+let audioCtx = null;
+
+function getAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+
+function tone(freq, type, dur, vol = 0.18, delay = 0) {
+    if (muted) return;
+    try {
+        const ctx  = getAudio();
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+        gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + dur);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + dur + 0.01);
+    } catch (_) {}
+}
+
+function sfxWhack() {
+    // Short percussive thump
+    tone(200, 'square',   0.05, 0.35);
+    tone(100, 'sawtooth', 0.12, 0.25, 0.04);
+}
+
+function sfxMiss() {
+    tone(90, 'sine', 0.07, 0.08);
+}
+
+function sfxStart() {
+    tone(330, 'square', 0.07, 0.14);
+    tone(440, 'square', 0.07, 0.14, 0.09);
+    tone(550, 'square', 0.09, 0.14, 0.18);
+    tone(660, 'square', 0.12, 0.16, 0.27);
+}
+
+function sfxGameOver() {
+    tone(440, 'sawtooth', 0.14, 0.22);
+    tone(370, 'sawtooth', 0.14, 0.22, 0.16);
+    tone(294, 'sawtooth', 0.14, 0.22, 0.32);
+    tone(220, 'sawtooth', 0.26, 0.22, 0.48);
+}
+
+function sfxTick() {
+    tone(880, 'square', 0.035, 0.1);
+}
+
+// ── Difficulty ────────────────────────────────────────────────────────────
+const diffKey = getDifficulty();
+
+const DIFF = {
+    easy:   { spawnMs: 1500, minVis: 1900, maxVis: 2800, scoreMulti: 1, maxMoles: 2 },
+    normal: { spawnMs: 1050, minVis: 1300, maxVis: 2100, scoreMulti: 2, maxMoles: 3 },
+    hard:   { spawnMs:  680, minVis:  780, maxVis: 1350, scoreMulti: 3, maxMoles: 4 },
+}[diffKey] ?? { spawnMs: 1050, minVis: 1300, maxVis: 2100, scoreMulti: 2, maxMoles: 3 };
+
+document.getElementById('diff-badge').textContent = diffKey.toUpperCase();
+
+// ── Constants ─────────────────────────────────────────────────────────────
+const TOTAL_TIME     = 30;
+const HOLES          = 9;
+const BASE_PTS       = 10;
+const POINTS_PER_HIT = BASE_PTS * DIFF.scoreMulti;
+
+// ── State ─────────────────────────────────────────────────────────────────
+let score       = 0;
+let timeLeft    = TOTAL_TIME;
+let gameActive  = false;
+let timerHandle = null;
+let spawnHandle = null;
+/** @type {Set<number>} */
+const activeMoles = new Set();
+/** @type {Map<number, number>} */
+const moleFades   = new Map();   // hole index → hide timeout id
+
+// ── DOM refs ──────────────────────────────────────────────────────────────
+const field        = document.getElementById('field');
+const scoreVal     = document.getElementById('score-val');
+const timerVal     = document.getElementById('timer-val');
+const bestVal      = document.getElementById('best-val');
+const overlay      = document.getElementById('overlay');
+const overlayTitle = document.getElementById('overlay-title');
+const overlayScore = document.getElementById('overlay-score');
+const overlaySub   = document.getElementById('overlay-sub');
+const startBtn     = document.getElementById('startBtn');
+const muteBtn      = document.getElementById('muteBtn');
+
+// ── Mole SVG ──────────────────────────────────────────────────────────────
+const MOLE_SVG = `<svg viewBox="0 0 44 52" xmlns="http://www.w3.org/2000/svg">
+  <!-- Body -->
+  <ellipse cx="22" cy="42" rx="16" ry="10" fill="#7c4b1a"/>
+  <!-- Head -->
+  <ellipse cx="22" cy="24" rx="16" ry="16" fill="#9b6431"/>
+  <!-- Left ear -->
+  <ellipse cx="8"  cy="13" rx="6"  ry="5"  fill="#7c4b1a"/>
+  <ellipse cx="8"  cy="13" rx="3.5" ry="2.5" fill="#d48898"/>
+  <!-- Right ear -->
+  <ellipse cx="36" cy="13" rx="6"  ry="5"  fill="#7c4b1a"/>
+  <ellipse cx="36" cy="13" rx="3.5" ry="2.5" fill="#d48898"/>
+  <!-- Eyes -->
+  <circle cx="15" cy="21" r="4"   fill="#1a1010"/>
+  <circle cx="29" cy="21" r="4"   fill="#1a1010"/>
+  <circle cx="16.2" cy="19.6" r="1.4" fill="#fffff0"/>
+  <circle cx="30.2" cy="19.6" r="1.4" fill="#fffff0"/>
+  <!-- Snout -->
+  <ellipse cx="22" cy="30" rx="8"  ry="6"  fill="#b87040"/>
+  <!-- Nose -->
+  <ellipse cx="22" cy="27" rx="4"  ry="3"  fill="#d48898"/>
+  <!-- Nostrils -->
+  <circle cx="20" cy="26.5" r="1.1" fill="#7c3040"/>
+  <circle cx="24" cy="26.5" r="1.1" fill="#7c3040"/>
+  <!-- Smile -->
+  <path d="M17 33 Q22 37 27 33"
+        stroke="#5a2a10" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+</svg>`;
+
+// ── Build grid ────────────────────────────────────────────────────────────
+/** @type {HTMLElement[]} */
+const holeEls = [];
+
+for (let i = 0; i < HOLES; i++) {
+    const hole = document.createElement('div');
+    hole.className = 'hole';
+    hole.innerHTML = `<div class="mole">${MOLE_SVG}</div><div class="dirt-rim"></div>`;
+    hole.addEventListener('pointerdown', () => onHoleClick(i));
+    field.appendChild(hole);
+    holeEls.push(hole);
+}
+
+// ── Best score ────────────────────────────────────────────────────────────
+function refreshBest() {
+    try {
+        const scores = getScores('whack-a-mole');
+        bestVal.textContent = scores.length > 0 ? scores[0].score : '–';
+    } catch (_) {
+        bestVal.textContent = '–';
+    }
+}
+refreshBest();
+
+// ── Difficulty ramp ───────────────────────────────────────────────────────
+// Returns a multiplier 1.0 → ~1.9 over 30 seconds
+function ramp() {
+    const elapsed = TOTAL_TIME - timeLeft;
+    return 1 + (elapsed / TOTAL_TIME) * 0.9;
+}
+
+function nextSpawnDelay() {
+    return Math.max(320, DIFF.spawnMs / ramp());
+}
+
+function moleDuration() {
+    const r   = ramp();
+    const min = DIFF.minVis / r;
+    const max = DIFF.maxVis / r;
+    return min + Math.random() * (max - min);
+}
+
+// ── Game flow ─────────────────────────────────────────────────────────────
+function startGame() {
+    score      = 0;
+    timeLeft   = TOTAL_TIME;
+    gameActive = true;
+
+    activeMoles.clear();
+    moleFades.forEach(t => clearTimeout(t));
+    moleFades.clear();
+
+    holeEls.forEach(h => h.classList.remove('up', 'whacked'));
+    scoreVal.textContent = '0';
+    timerVal.textContent = TOTAL_TIME;
+    timerVal.classList.remove('urgent');
+
+    overlay.classList.remove('show');
+    sfxStart();
+
+    // Countdown timer
+    timerHandle = setInterval(() => {
+        timeLeft--;
+        timerVal.textContent = timeLeft;
+        if (timeLeft <= 5) {
+            timerVal.classList.add('urgent');
+            sfxTick();
+        }
+        if (timeLeft <= 0) endGame();
+    }, 1000);
+
+    scheduleSpawn();
+}
+
+function endGame() {
+    gameActive = false;
+    clearInterval(timerHandle);
+    clearTimeout(spawnHandle);
+
+    // Retract all visible moles
+    activeMoles.forEach(idx => hideMole(idx));
+    activeMoles.clear();
+    moleFades.forEach(t => clearTimeout(t));
+    moleFades.clear();
+
+    sfxGameOver();
+
+    const rank = saveScore('whack-a-mole', score, diffKey);
+    refreshBest();
+
+    setTimeout(() => {
+        const molesHit = score / POINTS_PER_HIT;
+        overlayTitle.textContent  = 'TIME\'S UP!';
+        overlayScore.style.display = 'block';
+        overlayScore.textContent   = `SCORE: ${score}`;
+        overlaySub.textContent     = molesHit > 0
+            ? `${molesHit} MOLE${molesHit !== 1 ? 'S' : ''} WHACKED!`
+            : 'BETTER LUCK NEXT TIME!';
+        startBtn.textContent = 'PLAY AGAIN';
+        overlay.classList.add('show');
+
+        if (rank > 0) {
+            playHighScoreChime(muted);
+            showHighScoreBanner(rank);
+        }
+    }, 600);
+}
+
+// ── Spawning ──────────────────────────────────────────────────────────────
+function scheduleSpawn() {
+    if (!gameActive) return;
+    spawnHandle = setTimeout(() => {
+        spawnMole();
+        scheduleSpawn();
+    }, nextSpawnDelay());
+}
+
+function spawnMole() {
+    if (!gameActive || activeMoles.size >= DIFF.maxMoles) return;
+
+    const available = [];
+    for (let i = 0; i < HOLES; i++) {
+        if (!activeMoles.has(i)) available.push(i);
+    }
+    if (!available.length) return;
+
+    const idx = available[Math.floor(Math.random() * available.length)];
+    showMole(idx);
+}
+
+function showMole(idx) {
+    activeMoles.add(idx);
+    const hole = holeEls[idx];
+    hole.classList.remove('whacked');
+    hole.classList.add('up');
+
+    // Auto-hide after random duration
+    const t = setTimeout(() => {
+        if (activeMoles.has(idx) && !holeEls[idx].classList.contains('whacked')) {
+            hideMole(idx);
+        }
+    }, moleDuration());
+    moleFades.set(idx, t);
+}
+
+function hideMole(idx) {
+    activeMoles.delete(idx);
+    moleFades.delete(idx);
+    holeEls[idx].classList.remove('up', 'whacked');
+}
+
+// ── Click handling ────────────────────────────────────────────────────────
+function onHoleClick(idx) {
+    if (!gameActive) return;
+
+    if (activeMoles.has(idx) && !holeEls[idx].classList.contains('whacked')) {
+        // Hit!
+        score += POINTS_PER_HIT;
+        scoreVal.textContent = score;
+
+        holeEls[idx].classList.add('whacked');
+        sfxWhack();
+
+        // Cancel the auto-hide timeout
+        clearTimeout(moleFades.get(idx));
+        moleFades.delete(idx);
+
+        // Score popup
+        const popup = document.createElement('div');
+        popup.className  = 'score-popup';
+        popup.textContent = `+${POINTS_PER_HIT}`;
+        holeEls[idx].appendChild(popup);
+        setTimeout(() => popup.remove(), 560);
+
+        // Retract after whack animation
+        setTimeout(() => hideMole(idx), 320);
+    } else if (!activeMoles.has(idx)) {
+        sfxMiss();
+    }
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────
+startBtn.addEventListener('click', startGame);
+
+muteBtn.addEventListener('click', () => {
+    muted = !muted;
+    muteBtn.classList.toggle('muted', muted);
+    muteBtn.textContent = muted ? '✕ SFX' : '♪ SFX';
+});
+</script>
+</body>
+</html>
