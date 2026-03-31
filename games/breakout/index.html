@@ -193,6 +193,7 @@
 
 <script type="module">
 import { getDifficulty } from '../../utils/difficulty.js';
+import { saveScore, playHighScoreChime, showHighScoreBanner } from '../../utils/scores.js';
 
 // ── Audio ──────────────────────────────────────────────────
 let muted = false;
@@ -559,6 +560,11 @@ function update(ts) {
             if (bricksLeft === 0) {
                 state = 'win';
                 sfx.win();
+                const winRank = saveScore('breakout', score, diffKey);
+                if (winRank > 0) {
+                    showHighScoreBanner(winRank);
+                    setTimeout(() => playHighScoreChime(muted), 700);
+                }
                 showOverlay('YOU WIN!', 'SCORE: ' + score, '#fbbf24');
                 return;
             }
@@ -575,6 +581,11 @@ function update(ts) {
             lives = 0;
             state = 'gameover';
             sfx.gameOver();
+            const goRank = saveScore('breakout', score, diffKey);
+            if (goRank > 0) {
+                showHighScoreBanner(goRank);
+                setTimeout(() => playHighScoreChime(muted), 550);
+            }
             showOverlay('GAME OVER', 'SCORE: ' + score, '#ef4444');
         } else {
             state     = 'dead';

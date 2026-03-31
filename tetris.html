@@ -282,6 +282,7 @@
 
     <script type="module">
         import { getDifficulty, getDifficultyConfig } from './utils/difficulty.js';
+        import { saveScore, playHighScoreChime, showHighScoreBanner } from './utils/scores.js';
 
         // ── Constants ──────────────────────────────────────────────────────────
         const COLS = 10, ROWS = 20;
@@ -943,6 +944,12 @@
             if (score > best) {
                 best = score;
                 localStorage.setItem('tetris_best', best);
+            }
+            // Save to global leaderboard
+            const rank = saveScore('tetris', score, difficulty);
+            if (rank > 0) {
+                showHighScoreBanner(rank);
+                setTimeout(() => playHighScoreChime(muted), 700);
             }
             overlayScore.innerHTML =
                 `SCORE &nbsp; <span>${score}</span><br>` +
