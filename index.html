@@ -510,6 +510,34 @@ const othelloPixels = [
     [6, 9, OW],  // (5,5) White
 ];
 
+// Whack-A-Mole — brown dirt field, three holes, mole popping from centre
+const WG = '#6b3f1a', WD = '#0d0800', WM = '#9b6431', WP = '#d48898', WE = '#fffff0';
+const whacPixels = [
+    // Ground: rows 5-9, all 16 cols
+    ...[5,6,7,8,9].flatMap(r => Array.from({length:16}, (_,c) => [r, c, WG])),
+    // Left hole: cols 1-3, rows 6-8
+    [6,1,WD],[6,2,WD],[6,3,WD],
+    [7,1,WD],[7,2,WD],[7,3,WD],
+    [8,2,WD],
+    // Right hole: cols 11-13, rows 6-8
+    [6,11,WD],[6,12,WD],[6,13,WD],
+    [7,11,WD],[7,12,WD],[7,13,WD],
+    [8,12,WD],
+    // Centre hole lower part (mole covers row 6)
+    [7,6,WD],[7,7,WD],[7,8,WD],
+    [8,7,WD],
+    // Mole rising from centre hole (rows 2-6)
+    [2,7,WM],
+    [3,6,WM],[3,7,WM],[3,8,WM],
+    [4,6,WM],[4,7,WM],[4,8,WM],
+    [5,6,WM],[5,7,WM],[5,8,WM],
+    [6,6,WM],[6,7,WM],[6,8,WM],
+    // Eyes (override head row 3)
+    [3,6,WE],[3,8,WE],
+    // Nose (override face row 4)
+    [4,7,WP],
+];
+
 // Solitaire — card backs (stock), face-up cards in tableau, foundation suits
 const SP = '#f472b6', SW2 = '#c8c8d8', SB2 = '#0f2444', SBC = '#1a3a6a', SR2 = '#ef4444';
 const solitairePixels = [
@@ -606,6 +634,14 @@ const GAMES = [
         color: '#f97316',
         glow:  'rgba(249,115,22,0.35)',
         pixels: simonPixels,
+    },
+    {
+        name: 'WHACK-A-MOLE',
+        desc: 'Smash moles before they vanish — fast reflexes win.',
+        href: 'games/whack-a-mole/index.html',
+        color: '#ef4444',
+        glow:  'rgba(239,68,68,0.35)',
+        pixels: whacPixels,
     },
 ];
 

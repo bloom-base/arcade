@@ -1,0 +1,6 @@
+{"debug":"Calling MCP tool: approve_and_merge","timestamp":"2026-03-31T06:18:01.261Z","sessionId":"efd1ee19-aa9f-4910-9512-03d7a6c08467","cwd":"/tmp/bloom-task-1c2a6d0f-s0quyezu"}
+{"debug":"Tool 'approve_and_merge' completed successfully in 269ms","timestamp":"2026-03-31T06:18:01.530Z","sessionId":"efd1ee19-aa9f-4910-9512-03d7a6c08467","cwd":"/tmp/bloom-task-1c2a6d0f-s0quyezu"}
+{"debug":"Calling MCP tool: request_changes","timestamp":"2026-03-31T06:18:05.836Z","sessionId":"efd1ee19-aa9f-4910-9512-03d7a6c08467","cwd":"/tmp/bloom-task-1c2a6d0f-s0quyezu"}
+{"debug":"Tool 'request_changes' still running (30s elapsed)","timestamp":"2026-03-31T06:18:35.840Z","sessionId":"efd1ee19-aa9f-4910-9512-03d7a6c08467","cwd":"/tmp/bloom-task-1c2a6d0f-s0quyezu"}
+{"debug":"Tool 'request_changes' still running (60s elapsed)","timestamp":"2026-03-31T06:19:05.841Z","sessionId":"efd1ee19-aa9f-4910-9512-03d7a6c08467","cwd":"/tmp/bloom-task-1c2a6d0f-s0quyezu"}
+{"debug":"Tool 'request_changes' still running (90s elapsed)","timestamp":"2026-03-31T06:19:35.842Z","sessionId":"efd1ee19-aa9f-4910-9512-03d7a6c08467","cwd":"/tmp/bloom-task-1c2a6d0f-s0quyezu"}
