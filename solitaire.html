@@ -427,6 +427,7 @@ body::after {
 
 <script type="module">
 import { getDifficulty } from './utils/difficulty.js';
+import { saveScore, playHighScoreChime, showHighScoreBanner } from './utils/scores.js';
 
 /* ═══════════════════════════════════════════════════════════
    SOUND ENGINE  (Web Audio API)
@@ -696,6 +697,12 @@ function checkWin() {
     const bonus = Math.max(0, 10000 - moves * 10);
     score += bonus;
     updateScoreDisplay();
+    // Save to global leaderboard
+    const rank = saveScore('solitaire', score, difficulty);
+    if (rank > 0) {
+      showHighScoreBanner(rank);
+      setTimeout(() => playHighScoreChime(), 700);
+    }
     setTimeout(() => {
       document.getElementById('win-stats').textContent =
         `SCORE: ${score}   MOVES: ${moves}`;

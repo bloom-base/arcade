@@ -245,6 +245,7 @@
 
 <script type="module">
 import { getDifficulty, getDifficultyConfig, getDifficultyLabel, getDifficultyLevels } from './utils/difficulty.js';
+import { saveScore, playHighScoreChime, showHighScoreBanner } from './utils/scores.js';
 
 /* ═══════════════════════════════════════════════════════
    Config & Canvas Setup
@@ -477,6 +478,12 @@ function endGame() {
     if (isNewBest) {
         best = score;
         localStorage.setItem(BEST_KEY, best);
+    }
+    // Save to global leaderboard
+    const rank = saveScore('snake', score, difficulty);
+    if (rank > 0) {
+        showHighScoreBanner(rank);
+        setTimeout(() => playHighScoreChime(muted), 550);
     }
     elOvScore.textContent = 'SCORE: ' + score;
     elOvBest.textContent  = isNewBest ? '✦ NEW BEST ✦' : 'BEST: ' + best;
