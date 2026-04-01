@@ -541,7 +541,7 @@
         function moveEnemy(e, dt) {
             if (e.slowTimer > 0) {
                 e.slowTimer -= dt;
-                e.speed = e.baseSpeed * (e.slowTimer > 0 ? e.slowFactor || e.baseSpeed : 1);
+                e.speed = e.baseSpeed * (e.slowTimer > 0 ? e.slowFactor : 1);
             } else {
                 e.speed = e.baseSpeed;
             }
@@ -926,7 +926,7 @@
             }
 
             // Cleanup
-            enemies     = enemies.filter(e => !e.dead || e.wpIdx < WAYPOINTS.length);
+            enemies     = enemies.filter(e => !e.dead);
             projectiles = projectiles.filter(p => !p.done);
             particles   = particles.filter(p => p.life > 0);
             floats      = floats.filter(f => f.life > 0);

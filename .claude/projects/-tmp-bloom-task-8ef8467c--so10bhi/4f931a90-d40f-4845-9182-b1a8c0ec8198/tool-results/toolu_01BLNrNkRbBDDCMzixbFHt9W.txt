@@ -1,0 +1,1523 @@
+     1→diff --git a/games/tower-defense/index.html b/games/tower-defense/index.html
+     2→new file mode 100644
+     3→index 0000000..2d3b175
+     4→--- /dev/null
+     5→+++ b/games/tower-defense/index.html
+     6→@@ -0,0 +1,1458 @@
+     7→+<!DOCTYPE html>
+     8→+<html lang="en">
+     9→+<head>
+    10→+    <meta charset="UTF-8">
+    11→+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    12→+    <title>TOWER DEFENSE — arcade</title>
+    13→+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    14→+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    15→+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    16→+    <style>
+    17→+        * { margin: 0; padding: 0; box-sizing: border-box; }
+    18→+
+    19→+        body {
+    20→+            background: #0a0a0a;
+    21→+            color: #fafafa;
+    22→+            min-height: 100vh;
+    23→+            display: flex;
+    24→+            flex-direction: column;
+    25→+            align-items: center;
+    26→+            justify-content: center;
+    27→+            font-family: 'Press Start 2P', monospace;
+    28→+            overflow: hidden;
+    29→+            user-select: none;
+    30→+        }
+    31→+
+    32→+        body::after {
+    33→+            content: '';
+    34→+            position: fixed;
+    35→+            inset: 0;
+    36→+            background: repeating-linear-gradient(
+    37→+                to bottom,
+    38→+                transparent 0, transparent 3px,
+    39→+                rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
+    40→+            );
+    41→+            pointer-events: none;
+    42→+            z-index: 100;
+    43→+        }
+    44→+
+    45→+        .back-btn {
+    46→+            position: fixed;
+    47→+            top: 1.25rem;
+    48→+            left: 1.25rem;
+    49→+            font-family: 'Press Start 2P', monospace;
+    50→+            font-size: 0.5rem;
+    51→+            color: #444;
+    52→+            background: transparent;
+    53→+            border: 1px solid #2a2a2a;
+    54→+            padding: 0.5rem 0.875rem;
+    55→+            cursor: pointer;
+    56→+            letter-spacing: 0.05em;
+    57→+            transition: color 0.15s, border-color 0.15s;
+    58→+            z-index: 50;
+    59→+            text-decoration: none;
+    60→+            display: inline-block;
+    61→+        }
+    62→+        .back-btn:hover { color: #fafafa; border-color: #555; }
+    63→+
+    64→+        .mute-btn {
+    65→+            position: fixed;
+    66→+            top: 1.25rem;
+    67→+            right: 1.25rem;
+    68→+            font-family: 'Press Start 2P', monospace;
+    69→+            font-size: 0.5rem;
+    70→+            color: #444;
+    71→+            background: transparent;
+    72→+            border: 1px solid #2a2a2a;
+    73→+            padding: 0.5rem 0.875rem;
+    74→+            cursor: pointer;
+    75→+            letter-spacing: 0.05em;
+    76→+            transition: color 0.15s, border-color 0.15s;
+    77→+            z-index: 50;
+    78→+        }
+    79→+        .mute-btn:hover { color: #fafafa; border-color: #555; }
+    80→+        .mute-btn.muted { color: #ef4444; border-color: #7f1d1d; }
+    81→+
+    82→+        #game-wrap {
+    83→+            display: flex;
+    84→+            flex-direction: column;
+    85→+            align-items: center;
+    86→+            gap: 0.5rem;
+    87→+        }
+    88→+
+    89→+        #title {
+    90→+            font-size: clamp(0.5rem, 2vw, 0.75rem);
+    91→+            letter-spacing: 0.3em;
+    92→+            color: #a855f7;
+    93→+            text-shadow: 0 0 24px rgba(168,85,247,0.6);
+    94→+            margin-bottom: 0.25rem;
+    95→+        }
+    96→+
+    97→+        canvas {
+    98→+            display: block;
+    99→+            image-rendering: pixelated;
+   100→+            border: 1px solid #1e1e1e;
+   101→+            cursor: crosshair;
+   102→+            max-width: 100vw;
+   103→+        }
+   104→+
+   105→+        #overlay {
+   106→+            position: fixed;
+   107→+            inset: 0;
+   108→+            background: rgba(0,0,0,0.88);
+   109→+            display: flex;
+   110→+            flex-direction: column;
+   111→+            align-items: center;
+   112→+            justify-content: center;
+   113→+            z-index: 200;
+   114→+            opacity: 0;
+   115→+            pointer-events: none;
+   116→+            transition: opacity 0.35s ease;
+   117→+            gap: 1.5rem;
+   118→+            padding: 1rem;
+   119→+        }
+   120→+        #overlay.show { opacity: 1; pointer-events: auto; }
+   121→+
+   122→+        .ov-title {
+   123→+            font-size: clamp(1rem, 4vw, 1.75rem);
+   124→+            letter-spacing: 0.15em;
+   125→+            text-align: center;
+   126→+        }
+   127→+        .ov-sub {
+   128→+            font-size: clamp(0.4rem, 1.5vw, 0.6rem);
+   129→+            color: #737373;
+   130→+            letter-spacing: 0.1em;
+   131→+            text-align: center;
+   132→+            line-height: 2;
+   133→+        }
+   134→+        .ov-score {
+   135→+            font-size: clamp(0.5rem, 2vw, 0.8rem);
+   136→+            color: #a855f7;
+   137→+            text-shadow: 0 0 16px rgba(168,85,247,0.5);
+   138→+            text-align: center;
+   139→+        }
+   140→+
+   141→+        .ov-btn {
+   142→+            font-family: 'Press Start 2P', monospace;
+   143→+            font-size: clamp(0.4rem, 1.5vw, 0.6rem);
+   144→+            color: #0a0a0a;
+   145→+            background: #a855f7;
+   146→+            border: none;
+   147→+            padding: 0.75rem 1.5rem;
+   148→+            cursor: pointer;
+   149→+            letter-spacing: 0.1em;
+   150→+            transition: background 0.15s, transform 0.1s;
+   151→+            box-shadow: 0 0 20px rgba(168,85,247,0.4);
+   152→+        }
+   153→+        .ov-btn:hover { background: #c084fc; transform: scale(1.04); }
+   154→+
+   155→+        .ov-hint {
+   156→+            font-size: clamp(0.3rem, 1vw, 0.45rem);
+   157→+            color: #3a3a3a;
+   158→+            letter-spacing: 0.08em;
+   159→+            text-align: center;
+   160→+            line-height: 2;
+   161→+        }
+   162→+    </style>
+   163→+</head>
+   164→+<body>
+   165→+    <a class="back-btn" href="../../index.html#games">← BACK</a>
+   166→+    <button class="mute-btn" id="muteBtn">♪ SFX</button>
+   167→+
+   168→+    <div id="game-wrap">
+   169→+        <div id="title">TOWER DEFENSE</div>
+   170→+        <canvas id="canvas"></canvas>
+   171→+    </div>
+   172→+
+   173→+    <div id="overlay" class="show">
+   174→+        <div class="ov-title" style="color:#a855f7;text-shadow:0 0 30px rgba(168,85,247,0.7)">TOWER DEFENSE</div>
+   175→+        <div class="ov-sub">
+   176→+            PLACE TOWERS TO STOP THE ENEMY HORDE<br>
+   177→+            CLICK A TOWER TYPE THEN CLICK THE MAP
+   178→+        </div>
+   179→+        <div class="ov-hint">
+   180→+            ARROW — FAST, MEDIUM DMG<br>
+   181→+            CANNON — SLOW, SPLASH DMG<br>
+   182→+            ICE — SLOWS ENEMIES<br>
+   183→+            LIGHTNING — CHAINS TO NEARBY FOES
+   184→+        </div>
+   185→+        <button class="ov-btn" id="startBtn">START GAME</button>
+   186→+    </div>
+   187→+
+   188→+    <script type="module">
+   189→+        import { saveScore, playHighScoreChime, showHighScoreBanner } from '../../utils/scores.js';
+   190→+
+   191→+        // ── Audio ─────────────────────────────────────────────
+   192→+        let muted = false;
+   193→+        let audioCtx = null;
+   194→+        function getAudio() {
+   195→+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+   196→+            return audioCtx;
+   197→+        }
+   198→+        function tone(freq, type, dur, vol = 0.15, delay = 0) {
+   199→+            if (muted) return;
+   200→+            try {
+   201→+                const ctx = getAudio();
+   202→+                const osc = ctx.createOscillator();
+   203→+                const gain = ctx.createGain();
+   204→+                osc.connect(gain);
+   205→+                gain.connect(ctx.destination);
+   206→+                osc.type = type;
+   207→+                osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+   208→+                gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+   209→+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + dur);
+   210→+                osc.start(ctx.currentTime + delay);
+   211→+                osc.stop(ctx.currentTime + delay + dur + 0.01);
+   212→+            } catch (_) {}
+   213→+        }
+   214→+        const sfx = {
+   215→+            place:     () => { tone(440, 'square', 0.05, 0.12); tone(660, 'square', 0.05, 0.10, 0.05); },
+   216→+            shoot:     () => tone(880, 'square', 0.04, 0.06),
+   217→+            cannon:    () => { tone(120, 'sawtooth', 0.12, 0.18); tone(80, 'sawtooth', 0.10, 0.15, 0.06); },
+   218→+            ice:       () => tone(600, 'sine', 0.08, 0.10),
+   219→+            lightning: () => { tone(1200, 'sawtooth', 0.06, 0.12); tone(800, 'sawtooth', 0.05, 0.10, 0.03); },
+   220→+            kill:      () => tone(220, 'sawtooth', 0.07, 0.10),
+   221→+            wave:      () => { [330, 415, 523].forEach((f,i) => tone(f, 'square', 0.10, 0.14, i * 0.10)); },
+   222→+            loseLife:  () => { tone(180, 'sawtooth', 0.14, 0.20); tone(120, 'sawtooth', 0.12, 0.18, 0.10); },
+   223→+            gameOver:  () => { [200, 160, 120].forEach((f,i) => tone(f, 'sawtooth', 0.18, 0.22, i * 0.15)); },
+   224→+            win:       () => { [523, 659, 784, 1047].forEach((f,i) => tone(f, 'square', 0.14, 0.16, i * 0.12)); },
+   225→+            upgrade:   () => { tone(660, 'square', 0.06, 0.12); tone(880, 'square', 0.06, 0.10, 0.06); tone(1100, 'square', 0.08, 0.12, 0.12); },
+   226→+            noGold:    () => tone(160, 'sawtooth', 0.08, 0.12),
+   227→+        };
+   228→+
+   229→+        document.getElementById('muteBtn').addEventListener('click', () => {
+   230→+            muted = !muted;
+   231→+            const btn = document.getElementById('muteBtn');
+   232→+            btn.textContent = muted ? '✕ SFX' : '♪ SFX';
+   233→+            btn.classList.toggle('muted', muted);
+   234→+        });
+   235→+
+   236→+        // ── Canvas setup ──────────────────────────────────────
+   237→+        const canvas = document.getElementById('canvas');
+   238→+        const ctx = canvas.getContext('2d');
+   239→+
+   240→+        const CELL = 40;
+   241→+        const COLS = 16, ROWS = 12;
+   242→+        const GRID_W = COLS * CELL;   // 640
+   243→+        const GRID_H = ROWS * CELL;   // 480
+   244→+        const BAR_H = 44;             // top stats bar
+   245→+        const SIDE_W = 180;           // right sidebar
+   246→+        const CW = GRID_W + SIDE_W;   // 820
+   247→+        const CH = GRID_H + BAR_H;    // 524
+   248→+
+   249→+        canvas.width = CW;
+   250→+        canvas.height = CH;
+   251→+
+   252→+        // Scale canvas for smaller screens
+   253→+        function scaleCanvas() {
+   254→+            const maxW = Math.min(window.innerWidth - 20, 900);
+   255→+            const scale = Math.min(1, maxW / CW);
+   256→+            canvas.style.width  = Math.floor(CW * scale) + 'px';
+   257→+            canvas.style.height = Math.floor(CH * scale) + 'px';
+   258→+        }
+   259→+        scaleCanvas();
+   260→+        window.addEventListener('resize', scaleCanvas);
+   261→+
+   262→+        // ── Path definition ───────────────────────────────────
+   263→+        // Waypoints in grid-relative pixels (0,0 = top-left of grid)
+   264→+        const WAYPOINTS = [
+   265→+            [-20,  200],
+   266→+            [120,  200],
+   267→+            [120,  400],
+   268→+            [280,  400],
+   269→+            [280,   80],
+   270→+            [440,   80],
+   271→+            [440,  400],
+   272→+            [660,  400],
+   273→+        ];
+   274→+
+   275→+        // Pre-compute which grid cells are path cells (blocked for towers)
+   276→+        const pathCells = new Set();
+   277→+        function cellKey(c, r) { return c + ',' + r; }
+   278→+        function markPathCells() {
+   279→+            for (let i = 0; i < WAYPOINTS.length - 1; i++) {
+   280→+                const [x0, y0] = WAYPOINTS[i];
+   281→+                const [x1, y1] = WAYPOINTS[i + 1];
+   282→+                // Horizontal segment
+   283→+                if (y0 === y1) {
+   284→+                    const row = Math.floor(y0 / CELL);
+   285→+                    const c0 = Math.max(0, Math.floor(Math.min(x0, x1) / CELL));
+   286→+                    const c1 = Math.min(COLS - 1, Math.floor(Math.max(x0, x1) / CELL));
+   287→+                    for (let c = c0; c <= c1; c++) pathCells.add(cellKey(c, row));
+   288→+                } else {
+   289→+                    // Vertical segment
+   290→+                    const col = Math.floor(x0 / CELL);
+   291→+                    const r0 = Math.max(0, Math.floor(Math.min(y0, y1) / CELL));
+   292→+                    const r1 = Math.min(ROWS - 1, Math.floor(Math.max(y0, y1) / CELL));
+   293→+                    for (let r = r0; r <= r1; r++) pathCells.add(cellKey(col, r));
+   294→+                }
+   295→+            }
+   296→+        }
+   297→+        markPathCells();
+   298→+
+   299→+        // ── Tower definitions ─────────────────────────────────
+   300→+        const TOWER_DEFS = {
+   301→+            arrow: {
+   302→+                label: 'ARROW',
+   303→+                cost: 75,
+   304→+                color: '#22c55e',
+   305→+                glow: 'rgba(34,197,94,0.5)',
+   306→+                range: 120,
+   307→+                fireRate: 1.5,   // shots/sec
+   308→+                damage: 15,
+   309→+                projSpeed: 220,
+   310→+                projColor: '#86efac',
+   311→+                type: 'single',
+   312→+                upgrades: [
+   313→+                    { label: 'DMG+',  cost: 50,  apply: t => { t.damage += 10; } },
+   314→+                    { label: 'RANGE+',cost: 60,  apply: t => { t.range  += 30; } },
+   315→+                    { label: 'RATE+', cost: 70,  apply: t => { t.fireRate += 0.8; } },
+   316→+                ],
+   317→+            },
+   318→+            cannon: {
+   319→+                label: 'CANNON',
+   320→+                cost: 125,
+   321→+                color: '#f97316',
+   322→+                glow: 'rgba(249,115,22,0.5)',
+   323→+                range: 140,
+   324→+                fireRate: 0.5,
+   325→+                damage: 60,
+   326→+                projSpeed: 150,
+   327→+                projColor: '#fdba74',
+   328→+                type: 'splash',
+   329→+                splashRadius: 45,
+   330→+                upgrades: [
+   331→+                    { label: 'DMG+',    cost: 75,  apply: t => { t.damage += 35; } },
+   332→+                    { label: 'SPLASH+', cost: 80,  apply: t => { t.splashRadius += 20; } },
+   333→+                    { label: 'RATE+',   cost: 90,  apply: t => { t.fireRate += 0.3; } },
+   334→+                ],
+   335→+            },
+   336→+            ice: {
+   337→+                label: 'ICE',
+   338→+                cost: 100,
+   339→+                color: '#38bdf8',
+   340→+                glow: 'rgba(56,189,248,0.5)',
+   341→+                range: 110,
+   342→+                fireRate: 1.0,
+   343→+                damage: 8,
+   344→+                projSpeed: 180,
+   345→+                projColor: '#bae6fd',
+   346→+                type: 'slow',
+   347→+                slowFactor: 0.45,
+   348→+                slowDuration: 2.0,
+   349→+                upgrades: [
+   350→+                    { label: 'SLOW+',  cost: 60,  apply: t => { t.slowFactor -= 0.10; t.slowDuration += 0.5; } },
+   351→+                    { label: 'RANGE+', cost: 65,  apply: t => { t.range += 30; } },
+   352→+                    { label: 'RATE+',  cost: 70,  apply: t => { t.fireRate += 0.5; } },
+   353→+                ],
+   354→+            },
+   355→+            lightning: {
+   356→+                label: 'BOLT',
+   357→+                cost: 150,
+   358→+                color: '#a855f7',
+   359→+                glow: 'rgba(168,85,247,0.5)',
+   360→+                range: 130,
+   361→+                fireRate: 0.8,
+   362→+                damage: 28,
+   363→+                projSpeed: 999,
+   364→+                projColor: '#d8b4fe',
+   365→+                type: 'chain',
+   366→+                chainCount: 3,
+   367→+                chainRange: 90,
+   368→+                upgrades: [
+   369→+                    { label: 'DMG+',    cost: 80,  apply: t => { t.damage += 18; } },
+   370→+                    { label: 'CHAIN+',  cost: 90,  apply: t => { t.chainCount += 1; } },
+   371→+                    { label: 'RANGE+',  cost: 85,  apply: t => { t.range += 30; } },
+   372→+                ],
+   373→+            },
+   374→+        };
+   375→+
+   376→+        // ── Enemy definitions ─────────────────────────────────
+   377→+        const ENEMY_DEFS = {
+   378→+            basic:   { hp: 60,  speed: 62,  reward: 10, color: '#ef4444', size: 10 },
+   379→+            fast:    { hp: 40,  speed: 105, reward: 15, color: '#facc15', size: 8  },
+   380→+            tank:    { hp: 220, speed: 38,  reward: 30, color: '#94a3b8', size: 14 },
+   381→+            boss:    { hp: 700, speed: 28,  reward: 80, color: '#f43f5e', size: 18 },
+   382→+        };
+   383→+
+   384→+        // ── Wave definitions ──────────────────────────────────
+   385→+        function makeWave(n) {
+   386→+            const enemies = [];
+   387→+            const push = (type, count, gap = 1.1) => {
+   388→+                for (let i = 0; i < count; i++) {
+   389→+                    enemies.push({ type, delay: enemies.length * gap });
+   390→+                }
+   391→+            };
+   392→+            if (n === 1)  { push('basic', 10); }
+   393→+            else if (n === 2)  { push('basic', 15); }
+   394→+            else if (n === 3)  { push('basic', 10); push('fast', 6, 0.9); }
+   395→+            else if (n === 4)  { push('fast', 10, 0.9); push('basic', 8); }
+   396→+            else if (n === 5)  { push('tank', 4, 2.0); push('basic', 10); }
+   397→+            else if (n === 6)  { push('fast', 12, 0.8); push('tank', 5, 1.8); }
+   398→+            else if (n === 7)  { push('basic', 15); push('fast', 8, 0.8); push('tank', 4, 1.8); }
+   399→+            else if (n === 8)  { push('tank', 8, 1.6); push('fast', 10, 0.8); }
+   400→+            else if (n === 9)  { push('fast', 15, 0.7); push('tank', 6, 1.5); push('basic', 10); }
+   401→+            else if (n === 10) { push('boss', 1, 3); push('basic', 20); push('fast', 10, 0.8); }
+   402→+            else {
+   403→+                // Procedural after wave 10
+   404→+                const scale = n - 10;
+   405→+                push('basic', 10 + scale * 3);
+   406→+                push('fast', 5 + scale * 2, 0.8);
+   407→+                push('tank', 3 + scale, 1.5);
+   408→+                if (n % 5 === 0) push('boss', 1 + Math.floor(scale / 3), 2.5);
+   409→+            }
+   410→+            return enemies;
+   411→+        }
+   412→+        const TOTAL_WAVES = 15;
+   413→+
+   414→+        // ── Game state ────────────────────────────────────────
+   415→+        let state, towers, enemies, projectiles, particles, floats;
+   416→+        let gold, lives, wave, waveEnemies, waveSpawnTimer, waveSpawnIdx;
+   417→+        let waveCountdown, waveActive, waveComplete;
+   418→+        let selectedType, selectedTower;
+   419→+        let score, gamePhase; // 'playing' | 'over' | 'won'
+   420→+        let lastTime = 0;
+   421→+        let hoverCell = null;
+   422→+
+   423→+        function resetGame() {
+   424→+            towers     = [];
+   425→+            enemies    = [];
+   426→+            projectiles = [];
+   427→+            particles  = [];
+   428→+            floats     = [];
+   429→+            gold       = 150;
+   430→+            lives      = 20;
+   431→+            wave       = 0;
+   432→+            score      = 0;
+   433→+            waveActive = false;
+   434→+            waveComplete = false;
+   435→+            waveCountdown = 5;
+   436→+            selectedType = 'arrow';
+   437→+            selectedTower = null;
+   438→+            gamePhase  = 'playing';
+   439→+            waveEnemies = [];
+   440→+            waveSpawnIdx = 0;
+   441→+            waveSpawnTimer = 0;
+   442→+        }
+   443→+
+   444→+        // ── Tower factory ─────────────────────────────────────
+   445→+        function createTower(col, row, type) {
+   446→+            const def = TOWER_DEFS[type];
+   447→+            return {
+   448→+                col, row,
+   449→+                x: col * CELL + CELL / 2,
+   450→+                y: row * CELL + CELL / 2,
+   451→+                type,
+   452→+                label: def.label,
+   453→+                cost: def.cost,
+   454→+                color: def.color,
+   455→+                glow: def.glow,
+   456→+                range: def.range,
+   457→+                fireRate: def.fireRate,
+   458→+                damage: def.damage,
+   459→+                projSpeed: def.projSpeed,
+   460→+                projColor: def.projColor,
+   461→+                splashRadius: def.splashRadius || 0,
+   462→+                slowFactor: def.slowFactor || 0,
+   463→+                slowDuration: def.slowDuration || 0,
+   464→+                chainCount: def.chainCount || 0,
+   465→+                chainRange: def.chainRange || 0,
+   466→+                cooldown: 0,
+   467→+                upgradeLevel: 0,
+   468→+                target: null,
+   469→+                angle: 0,
+   470→+            };
+   471→+        }
+   472→+
+   473→+        // ── Enemy factory ─────────────────────────────────────
+   474→+        function createEnemy(type) {
+   475→+            const def = ENEMY_DEFS[type];
+   476→+            return {
+   477→+                type, color: def.color, size: def.size,
+   478→+                x: WAYPOINTS[0][0], y: WAYPOINTS[0][1],
+   479→+                hp: def.hp, maxHp: def.hp,
+   480→+                speed: def.speed, baseSpeed: def.speed,
+   481→+                reward: def.reward,
+   482→+                wpIdx: 1,
+   483→+                slowTimer: 0,
+   484→+                dead: false,
+   485→+            };
+   486→+        }
+   487→+
+   488→+        // ── Start wave ────────────────────────────────────────
+   489→+        function startWave() {
+   490→+            if (waveActive || wave >= TOTAL_WAVES) return;
+   491→+            wave++;
+   492→+            waveEnemies = makeWave(wave);
+   493→+            waveSpawnIdx = 0;
+   494→+            waveSpawnTimer = 0;
+   495→+            waveActive = true;
+   496→+            waveComplete = false;
+   497→+            sfx.wave();
+   498→+            // Bonus gold for early start
+   499→+            if (waveCountdown > 0) {
+   500→+                const bonus = Math.floor(waveCountdown) * 2;
+   501→+                gold += bonus;
+   502→+                addFloat(GRID_W / 2, BAR_H / 2, `+${bonus} EARLY!`, '#facc15');
+   503→+            }
+   504→+        }
+   505→+
+   506→+        // ── Projectile factory ────────────────────────────────
+   507→+        function createProjectile(tower, target) {
+   508→+            return {
+   509→+                x: tower.x, y: tower.y,
+   510→+                tx: target.x, ty: target.y,
+   511→+                target,
+   512→+                damage: tower.damage,
+   513→+                speed: tower.projSpeed,
+   514→+                color: tower.projColor,
+   515→+                type: tower.type,
+   516→+                splashRadius: tower.splashRadius,
+   517→+                slowFactor: tower.slowFactor,
+   518→+                slowDuration: tower.slowDuration,
+   519→+                chainCount: tower.chainCount,
+   520→+                chainRange: tower.chainRange,
+   521→+                done: false,
+   522→+            };
+   523→+        }
+   524→+
+   525→+        // ── Float text factory ────────────────────────────────
+   526→+        function addFloat(x, y, text, color) {
+   527→+            floats.push({ x, y, text, color, life: 1.0 });
+   528→+        }
+   529→+
+   530→+        // ── Particle factory ─────────────────────────────────
+   531→+        function addParticles(x, y, color, count = 6) {
+   532→+            for (let i = 0; i < count; i++) {
+   533→+                const angle = Math.random() * Math.PI * 2;
+   534→+                const spd = 30 + Math.random() * 60;
+   535→+                particles.push({
+   536→+                    x, y,
+   537→+                    vx: Math.cos(angle) * spd,
+   538→+                    vy: Math.sin(angle) * spd,
+   539→+                    life: 1.0,
+   540→+                    color,
+   541→+                    size: 2 + Math.random() * 3,
+   542→+                });
+   543→+            }
+   544→+        }
+   545→+
+   546→+        // ── Enemy movement ────────────────────────────────────
+   547→+        function moveEnemy(e, dt) {
+   548→+            if (e.slowTimer > 0) {
+   549→+                e.slowTimer -= dt;
+   550→+                e.speed = e.baseSpeed * (e.slowTimer > 0 ? e.slowFactor || e.baseSpeed : 1);
+   551→+            } else {
+   552→+                e.speed = e.baseSpeed;
+   553→+            }
+   554→+
+   555→+            const [tx, ty] = WAYPOINTS[e.wpIdx];
+   556→+            const dx = tx - e.x, dy = ty - e.y;
+   557→+            const dist = Math.hypot(dx, dy);
+   558→+            const move = e.speed * dt;
+   559→+
+   560→+            if (dist <= move) {
+   561→+                e.x = tx; e.y = ty;
+   562→+                e.wpIdx++;
+   563→+                if (e.wpIdx >= WAYPOINTS.length) {
+   564→+                    // Reached the end
+   565→+                    e.dead = true;
+   566→+                    lives = Math.max(0, lives - 1);
+   567→+                    sfx.loseLife();
+   568→+                    addFloat(GRID_W - 60, BAR_H / 2, '-1 LIFE', '#ef4444');
+   569→+                    if (lives <= 0) endGame(false);
+   570→+                }
+   571→+            } else {
+   572→+                e.x += (dx / dist) * move;
+   573→+                e.y += (dy / dist) * move;
+   574→+            }
+   575→+        }
+   576→+
+   577→+        // ── Tower targeting ───────────────────────────────────
+   578→+        function findTarget(tower) {
+   579→+            // "First" targeting: enemy furthest along the path
+   580→+            let best = null, bestProg = -1;
+   581→+            for (const e of enemies) {
+   582→+                if (e.dead) continue;
+   583→+                const gx = e.x, gy = e.y;
+   584→+                const dist = Math.hypot(gx - tower.x, gy - (tower.y));
+   585→+                if (dist > tower.range) continue;
+   586→+                const prog = e.wpIdx + (1 - Math.hypot(WAYPOINTS[e.wpIdx][0] - e.x, WAYPOINTS[e.wpIdx][1] - e.y) / 200);
+   587→+                if (prog > bestProg) { bestProg = prog; best = e; }
+   588→+            }
+   589→+            return best;
+   590→+        }
+   591→+
+   592→+        // ── Tower firing ──────────────────────────────────────
+   593→+        function fireTower(tower, dt) {
+   594→+            tower.cooldown -= dt;
+   595→+            if (tower.cooldown > 0) return;
+   596→+            const target = findTarget(tower);
+   597→+            if (!target) { tower.target = null; return; }
+   598→+            tower.target = target;
+   599→+            tower.angle = Math.atan2(target.y - tower.y, target.x - tower.x);
+   600→+            tower.cooldown = 1 / tower.fireRate;
+   601→+
+   602→+            if (tower.type === 'lightning') {
+   603→+                sfx.lightning();
+   604→+                // Instant chain damage
+   605→+                const hit = new Set([target]);
+   606→+                target.hp -= tower.damage;
+   607→+                addParticles(target.x, target.y + BAR_H, target.color);
+   608→+                let last = target;
+   609→+                for (let c = 1; c < tower.chainCount; c++) {
+   610→+                    let next = null, bestD = Infinity;
+   611→+                    for (const e of enemies) {
+   612→+                        if (e.dead || hit.has(e)) continue;
+   613→+                        const d = Math.hypot(e.x - last.x, e.y - last.y);
+   614→+                        if (d < tower.chainRange && d < bestD) { bestD = d; next = e; }
+   615→+                    }
+   616→+                    if (!next) break;
+   617→+                    hit.add(next);
+   618→+                    next.hp -= tower.damage * 0.7;
+   619→+                    addParticles(next.x, next.y + BAR_H, next.color);
+   620→+                    // Lightning bolt visual via projectile stub
+   621→+                    projectiles.push({
+   622→+                        x: last.x, y: last.y,
+   623→+                        tx: next.x, ty: next.y,
+   624→+                        target: null, done: true,
+   625→+                        visual: true, visualLife: 0.12,
+   626→+                        color: tower.projColor, type: 'lightning',
+   627→+                    });
+   628→+                    last = next;
+   629→+                }
+   630→+                // Connector from tower to first target
+   631→+                projectiles.push({
+   632→+                    x: tower.x, y: tower.y,
+   633→+                    tx: target.x, ty: target.y,
+   634→+                    target: null, done: true,
+   635→+                    visual: true, visualLife: 0.12,
+   636→+                    color: tower.projColor, type: 'lightning',
+   637→+                });
+   638→+                // Kill check
+   639→+                for (const e of hit) {
+   640→+                    if (e.hp <= 0) killEnemy(e);
+   641→+                }
+   642→+            } else {
+   643→+                const proj = createProjectile(tower, target);
+   644→+                projectiles.push(proj);
+   645→+                if (tower.type === 'cannon') sfx.cannon();
+   646→+                else if (tower.type === 'single') sfx.shoot();
+   647→+                else if (tower.type === 'slow') sfx.ice();
+   648→+                else sfx.shoot();
+   649→+            }
+   650→+        }
+   651→+
+   652→+        function killEnemy(e) {
+   653→+            if (e.dead) return;
+   654→+            e.dead = true;
+   655→+            gold += e.reward;
+   656→+            score += e.reward;
+   657→+            sfx.kill();
+   658→+            addParticles(e.x, e.y + BAR_H, e.color, 8);
+   659→+            addFloat(e.x, e.y + BAR_H, '+' + e.reward, '#facc15');
+   660→+        }
+   661→+
+   662→+        // ── Projectile movement ───────────────────────────────
+   663→+        function moveProjectile(p, dt) {
+   664→+            if (p.visual) {
+   665→+                p.visualLife -= dt;
+   666→+                if (p.visualLife <= 0) p.done = true;
+   667→+                return;
+   668→+            }
+   669→+            if (!p.target || p.target.dead) { p.done = true; return; }
+   670→+            p.tx = p.target.x; p.ty = p.target.y;
+   671→+            const dx = p.tx - p.x, dy = p.ty - p.y;
+   672→+            const dist = Math.hypot(dx, dy);
+   673→+            const move = p.speed * dt;
+   674→+            if (dist <= move) {
+   675→+                // Hit
+   676→+                if (p.type === 'splash') {
+   677→+                    for (const e of enemies) {
+   678→+                        if (e.dead) continue;
+   679→+                        const d = Math.hypot(e.x - p.tx, e.y - p.ty);
+   680→+                        if (d <= p.splashRadius) {
+   681→+                            e.hp -= p.damage * (1 - d / p.splashRadius * 0.5);
+   682→+                            if (e.hp <= 0) killEnemy(e);
+   683→+                        }
+   684→+                    }
+   685→+                    addParticles(p.tx, p.ty + BAR_H, '#fdba74', 12);
+   686→+                } else {
+   687→+                    p.target.hp -= p.damage;
+   688→+                    if (p.type === 'slow') {
+   689→+                        p.target.slowTimer = p.slowDuration;
+   690→+                        p.target.slowFactor = p.slowFactor;
+   691→+                    }
+   692→+                    if (p.target.hp <= 0) killEnemy(p.target);
+   693→+                    else addParticles(p.tx, p.ty + BAR_H, p.color, 3);
+   694→+                }
+   695→+                p.done = true;
+   696→+            } else {
+   697→+                p.x += (dx / dist) * move;
+   698→+                p.y += (dy / dist) * move;
+   699→+            }
+   700→+        }
+   701→+
+   702→+        // ── Game Over ─────────────────────────────────────────
+   703→+        function endGame(won) {
+   704→+            gamePhase = won ? 'won' : 'over';
+   705→+            const rank = saveScore('tower-defense', wave, 'normal');
+   706→+
+   707→+            const ol = document.getElementById('overlay');
+   708→+            ol.innerHTML = won
+   709→+                ? `<div class="ov-title" style="color:#22c55e;text-shadow:0 0 30px rgba(34,197,94,0.7)">YOU WIN!</div>
+   710→+                   <div class="ov-score">WAVE ${wave} CLEARED</div>
+   711→+                   <div class="ov-score" style="color:#facc15">GOLD EARNED: ${score}</div>
+   712→+                   <button class="ov-btn" id="restartBtn" style="background:#22c55e">PLAY AGAIN</button>`
+   713→+                : `<div class="ov-title" style="color:#ef4444;text-shadow:0 0 30px rgba(239,68,68,0.7)">GAME OVER</div>
+   714→+                   <div class="ov-score">REACHED WAVE ${wave}</div>
+   715→+                   <div class="ov-score" style="color:#facc15">GOLD EARNED: ${score}</div>
+   716→+                   <button class="ov-btn" id="restartBtn" style="background:#a855f7">TRY AGAIN</button>`;
+   717→+            ol.classList.add('show');
+   718→+
+   719→+            document.getElementById('restartBtn').addEventListener('click', () => {
+   720→+                ol.classList.remove('show');
+   721→+                resetGame();
+   722→+            });
+   723→+
+   724→+            if (rank > 0) setTimeout(() => { showHighScoreBanner(rank); playHighScoreChime(muted); }, 600);
+   725→+            won ? sfx.win() : sfx.gameOver();
+   726→+        }
+   727→+
+   728→+        // ── Tower placement ───────────────────────────────────
+   729→+        function tryPlaceTower(px, py) {
+   730→+            // Convert canvas coords to grid coords
+   731→+            const gx = px, gy = py - BAR_H;
+   732→+            if (gx < 0 || gx >= GRID_W || gy < 0 || gy >= GRID_H) return;
+   733→+            const col = Math.floor(gx / CELL);
+   734→+            const row = Math.floor(gy / CELL);
+   735→+
+   736→+            if (pathCells.has(cellKey(col, row))) return;
+   737→+            if (towers.find(t => t.col === col && t.row === row)) return;
+   738→+
+   739→+            const def = TOWER_DEFS[selectedType];
+   740→+            if (gold < def.cost) { sfx.noGold(); addFloat(px, py, 'NO GOLD!', '#ef4444'); return; }
+   741→+
+   742→+            gold -= def.cost;
+   743→+            const t = createTower(col, row, selectedType);
+   744→+            towers.push(t);
+   745→+            selectedTower = t;
+   746→+            sfx.place();
+   747→+        }
+   748→+
+   749→+        function trySelectTower(px, py) {
+   750→+            const gx = px, gy = py - BAR_H;
+   751→+            if (gx < 0 || gx >= GRID_W || gy < 0 || gy >= GRID_H) return false;
+   752→+            const col = Math.floor(gx / CELL);
+   753→+            const row = Math.floor(gy / CELL);
+   754→+            const t = towers.find(t => t.col === col && t.row === row);
+   755→+            if (t) { selectedTower = t; return true; }
+   756→+            return false;
+   757→+        }
+   758→+
+   759→+        // ── Sidebar click handling ────────────────────────────
+   760→+        const SIDEBAR_X = GRID_W;
+   761→+        const TOWER_TYPES = Object.keys(TOWER_DEFS);
+   762→+
+   763→+        function handleSidebarClick(px, py) {
+   764→+            if (px < SIDEBAR_X || px >= CW) return;
+   765→+            const rx = px - SIDEBAR_X;
+   766→+            const ry = py - BAR_H;
+   767→+
+   768→+            // Tower type buttons (top of sidebar)
+   769→+            const btnH = 52, btnY0 = 8;
+   770→+            for (let i = 0; i < TOWER_TYPES.length; i++) {
+   771→+                const by = btnY0 + i * (btnH + 6);
+   772→+                if (ry >= by && ry < by + btnH) {
+   773→+                    selectedType = TOWER_TYPES[i];
+   774→+                    selectedTower = null;
+   775→+                    return;
+   776→+                }
+   777→+            }
+   778→+
+   779→+            // Wave button
+   780→+            const waveY = btnY0 + TOWER_TYPES.length * (btnH + 6) + 16;
+   781→+            if (ry >= waveY && ry < waveY + 38 && !waveActive) {
+   782→+                startWave();
+   783→+                return;
+   784→+            }
+   785→+
+   786→+            // Upgrade buttons (when tower selected)
+   787→+            if (selectedTower) {
+   788→+                const upgY0 = waveY + 56;
+   789→+                const def = TOWER_DEFS[selectedTower.type];
+   790→+                for (let i = 0; i < 3; i++) {
+   791→+                    const uy = upgY0 + i * 38;
+   792→+                    if (ry >= uy && ry < uy + 32) {
+   793→+                        const upg = def.upgrades[i];
+   794→+                        if (selectedTower.upgradeLevel > i) {
+   795→+                            // Already bought this tier
+   796→+                        } else if (selectedTower.upgradeLevel === i) {
+   797→+                            if (gold >= upg.cost) {
+   798→+                                gold -= upg.cost;
+   799→+                                upg.apply(selectedTower);
+   800→+                                selectedTower.upgradeLevel++;
+   801→+                                sfx.upgrade();
+   802→+                                addFloat(selectedTower.x, selectedTower.y + BAR_H, 'UPGRADED!', '#a855f7');
+   803→+                            } else {
+   804→+                                sfx.noGold();
+   805→+                                addFloat(selectedTower.x, selectedTower.y + BAR_H, 'NO GOLD!', '#ef4444');
+   806→+                            }
+   807→+                        }
+   808→+                        return;
+   809→+                    }
+   810→+                }
+   811→+            }
+   812→+        }
+   813→+
+   814→+        // ── Canvas click ──────────────────────────────────────
+   815→+        function getCanvasPos(evt) {
+   816→+            const rect = canvas.getBoundingClientRect();
+   817→+            const scaleX = CW / rect.width;
+   818→+            const scaleY = CH / rect.height;
+   819→+            let cx, cy;
+   820→+            if (evt.touches) {
+   821→+                cx = (evt.touches[0].clientX - rect.left) * scaleX;
+   822→+                cy = (evt.touches[0].clientY - rect.top)  * scaleY;
+   823→+            } else {
+   824→+                cx = (evt.clientX - rect.left) * scaleX;
+   825→+                cy = (evt.clientY - rect.top)  * scaleY;
+   826→+            }
+   827→+            return [cx, cy];
+   828→+        }
+   829→+
+   830→+        canvas.addEventListener('click', evt => {
+   831→+            if (gamePhase !== 'playing') return;
+   832→+            const [px, py] = getCanvasPos(evt);
+   833→+            if (px >= SIDEBAR_X) {
+   834→+                handleSidebarClick(px, py);
+   835→+            } else {
+   836→+                if (!trySelectTower(px, py)) {
+   837→+                    tryPlaceTower(px, py);
+   838→+                }
+   839→+            }
+   840→+        });
+   841→+
+   842→+        canvas.addEventListener('mousemove', evt => {
+   843→+            const [px, py] = getCanvasPos(evt);
+   844→+            const gx = px, gy = py - BAR_H;
+   845→+            if (gx >= 0 && gx < GRID_W && gy >= 0 && gy < GRID_H) {
+   846→+                hoverCell = [Math.floor(gx / CELL), Math.floor(gy / CELL)];
+   847→+            } else {
+   848→+                hoverCell = null;
+   849→+            }
+   850→+        });
+   851→+
+   852→+        canvas.addEventListener('mouseleave', () => { hoverCell = null; });
+   853→+        canvas.addEventListener('touchstart', evt => {
+   854→+            evt.preventDefault();
+   855→+            if (gamePhase !== 'playing') return;
+   856→+            const [px, py] = getCanvasPos(evt);
+   857→+            if (px >= SIDEBAR_X) handleSidebarClick(px, py);
+   858→+            else if (!trySelectTower(px, py)) tryPlaceTower(px, py);
+   859→+        }, { passive: false });
+   860→+
+   861→+        document.addEventListener('keydown', evt => {
+   862→+            if (evt.code === 'Enter' || evt.code === 'Space') {
+   863→+                evt.preventDefault();
+   864→+                if (!waveActive && gamePhase === 'playing') startWave();
+   865→+            }
+   866→+            if (evt.code === 'Digit1') selectedType = 'arrow';
+   867→+            if (evt.code === 'Digit2') selectedType = 'cannon';
+   868→+            if (evt.code === 'Digit3') selectedType = 'ice';
+   869→+            if (evt.code === 'Digit4') selectedType = 'lightning';
+   870→+            if (evt.code === 'Escape') { selectedTower = null; }
+   871→+        });
+   872→+
+   873→+        // ── Update ────────────────────────────────────────────
+   874→+        function update(dt) {
+   875→+            if (gamePhase !== 'playing') return;
+   876→+
+   877→+            // Wave countdown
+   878→+            if (!waveActive) {
+   879→+                waveCountdown -= dt;
+   880→+                if (waveCountdown <= 0) {
+   881→+                    if (wave < TOTAL_WAVES) startWave();
+   882→+                    else { endGame(true); return; }
+   883→+                }
+   884→+            }
+   885→+
+   886→+            // Spawn enemies
+   887→+            if (waveActive && waveSpawnIdx < waveEnemies.length) {
+   888→+                waveSpawnTimer += dt;
+   889→+                while (waveSpawnIdx < waveEnemies.length &&
+   890→+                       waveSpawnTimer >= waveEnemies[waveSpawnIdx].delay) {
+   891→+                    enemies.push(createEnemy(waveEnemies[waveSpawnIdx].type));
+   892→+                    waveSpawnIdx++;
+   893→+                }
+   894→+            }
+   895→+
+   896→+            // Move enemies
+   897→+            for (const e of enemies) {
+   898→+                if (!e.dead) moveEnemy(e, dt);
+   899→+            }
+   900→+
+   901→+            // Tower logic
+   902→+            for (const t of towers) fireTower(t, dt);
+   903→+
+   904→+            // Move projectiles
+   905→+            for (const p of projectiles) moveProjectile(p, dt);
+   906→+
+   907→+            // Check wave complete
+   908→+            if (waveActive && waveSpawnIdx >= waveEnemies.length && enemies.every(e => e.dead)) {
+   909→+                waveActive = false;
+   910→+                waveComplete = true;
+   911→+                waveCountdown = 6;
+   912→+                // Wave clear bonus
+   913→+                const bonus = 20 + wave * 5;
+   914→+                gold += bonus;
+   915→+                score += bonus;
+   916→+                addFloat(GRID_W / 2, BAR_H / 2, `WAVE ${wave} CLEAR! +${bonus}`, '#22c55e');
+   917→+                if (wave >= TOTAL_WAVES) { setTimeout(() => endGame(true), 1200); }
+   918→+            }
+   919→+
+   920→+            // Particles
+   921→+            for (const p of particles) {
+   922→+                p.x += p.vx * dt;
+   923→+                p.y += p.vy * dt;
+   924→+                p.vy += 80 * dt;
+   925→+                p.life -= dt * 1.5;
+   926→+            }
+   927→+
+   928→+            // Floats
+   929→+            for (const f of floats) {
+   930→+                f.y -= 30 * dt;
+   931→+                f.life -= dt;
+   932→+            }
+   933→+
+   934→+            // Cleanup
+   935→+            enemies     = enemies.filter(e => !e.dead || e.wpIdx < WAYPOINTS.length);
+   936→+            projectiles = projectiles.filter(p => !p.done);
+   937→+            particles   = particles.filter(p => p.life > 0);
+   938→+            floats      = floats.filter(f => f.life > 0);
+   939→+        }
+   940→+
+   941→+        // ── Draw helpers ──────────────────────────────────────
+   942→+        function roundRect(x, y, w, h, r) {
+   943→+            ctx.beginPath();
+   944→+            ctx.moveTo(x + r, y);
+   945→+            ctx.lineTo(x + w - r, y);
+   946→+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+   947→+            ctx.lineTo(x + w, y + h - r);
+   948→+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+   949→+            ctx.lineTo(x + r, y + h);
+   950→+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+   951→+            ctx.lineTo(x, y + r);
+   952→+            ctx.quadraticCurveTo(x, y, x + r, y);
+   953→+            ctx.closePath();
+   954→+        }
+   955→+
+   956→+        function drawPixelFont(text, x, y, size, color, align = 'left') {
+   957→+            ctx.font = `${size}px "Press Start 2P"`;
+   958→+            ctx.fillStyle = color;
+   959→+            ctx.textAlign = align;
+   960→+            ctx.textBaseline = 'middle';
+   961→+            ctx.fillText(text, x, y);
+   962→+        }
+   963→+
+   964→+        // ── Draw path ─────────────────────────────────────────
+   965→+        function drawPath() {
+   966→+            // Path background
+   967→+            ctx.strokeStyle = '#1e293b';
+   968→+            ctx.lineWidth = CELL;
+   969→+            ctx.lineCap = 'round';
+   970→+            ctx.lineJoin = 'round';
+   971→+            ctx.beginPath();
+   972→+            ctx.moveTo(WAYPOINTS[0][0], WAYPOINTS[0][1] + BAR_H);
+   973→+            for (let i = 1; i < WAYPOINTS.length; i++) {
+   974→+                ctx.lineTo(WAYPOINTS[i][0], WAYPOINTS[i][1] + BAR_H);
+   975→+            }
+   976→+            ctx.stroke();
+   977→+
+   978→+            // Path center line (dashed)
+   979→+            ctx.strokeStyle = '#334155';
+   980→+            ctx.lineWidth = 2;
+   981→+            ctx.setLineDash([8, 12]);
+   982→+            ctx.beginPath();
+   983→+            ctx.moveTo(WAYPOINTS[0][0], WAYPOINTS[0][1] + BAR_H);
+   984→+            for (let i = 1; i < WAYPOINTS.length; i++) {
+   985→+                ctx.lineTo(WAYPOINTS[i][0], WAYPOINTS[i][1] + BAR_H);
+   986→+            }
+   987→+            ctx.stroke();
+   988→+            ctx.setLineDash([]);
+   989→+
+   990→+            // Entry/exit arrows
+   991→+            ctx.fillStyle = '#22c55e';
+   992→+            ctx.font = '11px "Press Start 2P"';
+   993→+            ctx.textAlign = 'left';
+   994→+            ctx.textBaseline = 'middle';
+   995→+            ctx.fillText('IN', 4, WAYPOINTS[0][1] + BAR_H);
+   996→+            ctx.fillStyle = '#ef4444';
+   997→+            ctx.textAlign = 'right';
+   998→+            ctx.fillText('OUT', GRID_W - 4, WAYPOINTS[WAYPOINTS.length - 1][1] + BAR_H);
+   999→+        }
+  1000→+
+  1001→+        // ── Draw grid ─────────────────────────────────────────
+  1002→+        function drawGrid() {
+  1003→+            ctx.fillStyle = '#0f172a';
+  1004→+            ctx.fillRect(0, BAR_H, GRID_W, GRID_H);
+  1005→+
+  1006→+            // Grid lines
+  1007→+            ctx.strokeStyle = '#1e293b';
+  1008→+            ctx.lineWidth = 0.5;
+  1009→+            for (let c = 0; c <= COLS; c++) {
+  1010→+                ctx.beginPath();
+  1011→+                ctx.moveTo(c * CELL, BAR_H);
+  1012→+                ctx.lineTo(c * CELL, BAR_H + GRID_H);
+  1013→+                ctx.stroke();
+  1014→+            }
+  1015→+            for (let r = 0; r <= ROWS; r++) {
+  1016→+                ctx.beginPath();
+  1017→+                ctx.moveTo(0, BAR_H + r * CELL);
+  1018→+                ctx.lineTo(GRID_W, BAR_H + r * CELL);
+  1019→+                ctx.stroke();
+  1020→+            }
+  1021→+
+  1022→+            // Hover highlight
+  1023→+            if (hoverCell && gamePhase === 'playing') {
+  1024→+                const [hc, hr] = hoverCell;
+  1025→+                const isPath = pathCells.has(cellKey(hc, hr));
+  1026→+                const hasTower = towers.some(t => t.col === hc && t.row === hr);
+  1027→+                if (!isPath && !hasTower) {
+  1028→+                    const def = TOWER_DEFS[selectedType];
+  1029→+                    ctx.fillStyle = 'rgba(168,85,247,0.15)';
+  1030→+                    ctx.fillRect(hc * CELL + 1, BAR_H + hr * CELL + 1, CELL - 2, CELL - 2);
+  1031→+                    // Range preview
+  1032→+                    ctx.beginPath();
+  1033→+                    ctx.arc(hc * CELL + CELL / 2, BAR_H + hr * CELL + CELL / 2, def.range, 0, Math.PI * 2);
+  1034→+                    ctx.strokeStyle = 'rgba(168,85,247,0.25)';
+  1035→+                    ctx.lineWidth = 1;
+  1036→+                    ctx.stroke();
+  1037→+                }
+  1038→+            }
+  1039→+        }
+  1040→+
+  1041→+        // ── Draw towers ───────────────────────────────────────
+  1042→+        function drawTowers() {
+  1043→+            for (const t of towers) {
+  1044→+                const px = t.col * CELL + CELL / 2;
+  1045→+                const py = BAR_H + t.row * CELL + CELL / 2;
+  1046→+                const isSelected = t === selectedTower;
+  1047→+
+  1048→+                // Range circle when selected
+  1049→+                if (isSelected) {
+  1050→+                    ctx.beginPath();
+  1051→+                    ctx.arc(px, py, t.range, 0, Math.PI * 2);
+  1052→+                    ctx.strokeStyle = t.color + '55';
+  1053→+                    ctx.lineWidth = 1;
+  1054→+                    ctx.stroke();
+  1055→+                    ctx.fillStyle = t.color + '11';
+  1056→+                    ctx.fill();
+  1057→+                }
+  1058→+
+  1059→+                // Tower base
+  1060→+                const pad = 4;
+  1061→+                ctx.fillStyle = isSelected ? '#1e293b' : '#0f172a';
+  1062→+                ctx.strokeStyle = t.color;
+  1063→+                ctx.lineWidth = isSelected ? 2 : 1.5;
+  1064→+                roundRect(t.col * CELL + pad, BAR_H + t.row * CELL + pad, CELL - pad * 2, CELL - pad * 2, 4);
+  1065→+                ctx.fill();
+  1066→+                ctx.stroke();
+  1067→+
+  1068→+                // Glow
+  1069→+                if (isSelected) {
+  1070→+                    ctx.shadowColor = t.color;
+  1071→+                    ctx.shadowBlur = 8;
+  1072→+                }
+  1073→+
+  1074→+                // Tower icon by type
+  1075→+                ctx.save();
+  1076→+                ctx.translate(px, py);
+  1077→+                ctx.rotate(t.angle);
+  1078→+                ctx.fillStyle = t.color;
+  1079→+
+  1080→+                if (t.type === 'arrow') {
+  1081→+                    // Arrow head
+  1082→+                    ctx.beginPath();
+  1083→+                    ctx.moveTo(10, 0); ctx.lineTo(-4, -5); ctx.lineTo(-2, 0); ctx.lineTo(-4, 5);
+  1084→+                    ctx.closePath(); ctx.fill();
+  1085→+                } else if (t.type === 'cannon') {
+  1086→+                    // Cannon barrel
+  1087→+                    ctx.fillRect(-5, -4, 14, 8);
+  1088→+                    ctx.beginPath();
+  1089→+                    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+  1090→+                    ctx.fillStyle = '#1e293b'; ctx.fill();
+  1091→+                    ctx.strokeStyle = t.color; ctx.lineWidth = 2; ctx.stroke();
+  1092→+                } else if (t.type === 'slow') {
+  1093→+                    // Snowflake
+  1094→+                    ctx.rotate(-t.angle);
+  1095→+                    for (let i = 0; i < 6; i++) {
+  1096→+                        ctx.save(); ctx.rotate(i * Math.PI / 3);
+  1097→+                        ctx.fillRect(-1, -10, 2, 20);
+  1098→+                        ctx.restore();
+  1099→+                    }
+  1100→+                } else if (t.type === 'chain') {
+  1101→+                    // Lightning bolt
+  1102→+                    ctx.rotate(-t.angle);
+  1103→+                    ctx.beginPath();
+  1104→+                    ctx.moveTo(2, -10); ctx.lineTo(-3, 0); ctx.lineTo(3, 0); ctx.lineTo(-2, 10);
+  1105→+                    ctx.strokeStyle = t.color; ctx.lineWidth = 3; ctx.stroke();
+  1106→+                }
+  1107→+                ctx.restore();
+  1108→+                ctx.shadowBlur = 0;
+  1109→+
+  1110→+                // Upgrade pips
+  1111→+                for (let i = 0; i < t.upgradeLevel; i++) {
+  1112→+                    ctx.fillStyle = '#facc15';
+  1113→+                    ctx.fillRect(t.col * CELL + 5 + i * 7, BAR_H + t.row * CELL + 2, 5, 3);
+  1114→+                }
+  1115→+            }
+  1116→+        }
+  1117→+
+  1118→+        // ── Draw enemies ──────────────────────────────────────
+  1119→+        function drawEnemies() {
+  1120→+            for (const e of enemies) {
+  1121→+                if (e.dead) continue;
+  1122→+                const ex = e.x, ey = e.y + BAR_H;
+  1123→+
+  1124→+                // Slow tint
+  1125→+                if (e.slowTimer > 0) {
+  1126→+                    ctx.beginPath();
+  1127→+                    ctx.arc(ex, ey, e.size + 4, 0, Math.PI * 2);
+  1128→+                    ctx.fillStyle = 'rgba(56,189,248,0.2)';
+  1129→+                    ctx.fill();
+  1130→+                }
+  1131→+
+  1132→+                // Enemy body
+  1133→+                ctx.beginPath();
+  1134→+                ctx.arc(ex, ey, e.size, 0, Math.PI * 2);
+  1135→+                ctx.fillStyle = e.color;
+  1136→+                ctx.fill();
+  1137→+                ctx.strokeStyle = '#fff2';
+  1138→+                ctx.lineWidth = 1;
+  1139→+                ctx.stroke();
+  1140→+
+  1141→+                // Direction indicator
+  1142→+                if (e.wpIdx < WAYPOINTS.length) {
+  1143→+                    const [tx, ty] = WAYPOINTS[e.wpIdx];
+  1144→+                    const ang = Math.atan2(ty - e.y, tx - e.x);
+  1145→+                    ctx.beginPath();
+  1146→+                    ctx.moveTo(ex + Math.cos(ang) * e.size, ey + Math.sin(ang) * e.size);
+  1147→+                    ctx.lineTo(
+  1148→+                        ex + Math.cos(ang) * (e.size + 5),
+  1149→+                        ey + Math.sin(ang) * (e.size + 5)
+  1150→+                    );
+  1151→+                    ctx.strokeStyle = '#fff6';
+  1152→+                    ctx.lineWidth = 2;
+  1153→+                    ctx.stroke();
+  1154→+                }
+  1155→+
+  1156→+                // HP bar
+  1157→+                const barW = e.size * 2.5, barH = 3;
+  1158→+                const bx = ex - barW / 2, by = ey - e.size - 6;
+  1159→+                ctx.fillStyle = '#1f2937';
+  1160→+                ctx.fillRect(bx, by, barW, barH);
+  1161→+                const pct = Math.max(0, e.hp / e.maxHp);
+  1162→+                ctx.fillStyle = pct > 0.5 ? '#22c55e' : pct > 0.25 ? '#facc15' : '#ef4444';
+  1163→+                ctx.fillRect(bx, by, barW * pct, barH);
+  1164→+            }
+  1165→+        }
+  1166→+
+  1167→+        // ── Draw projectiles ──────────────────────────────────
+  1168→+        function drawProjectiles() {
+  1169→+            for (const p of projectiles) {
+  1170→+                if (p.visual) {
+  1171→+                    // Lightning bolt visual
+  1172→+                    ctx.beginPath();
+  1173→+                    ctx.moveTo(p.x, p.y + BAR_H);
+  1174→+                    ctx.lineTo(p.tx, p.ty + BAR_H);
+  1175→+                    ctx.strokeStyle = p.color;
+  1176→+                    ctx.lineWidth = 2;
+  1177→+                    ctx.shadowColor = p.color;
+  1178→+                    ctx.shadowBlur = 6;
+  1179→+                    ctx.stroke();
+  1180→+                    ctx.shadowBlur = 0;
+  1181→+                    continue;
+  1182→+                }
+  1183→+                const py = p.y + BAR_H;
+  1184→+                const pty = p.ty + BAR_H;
+  1185→+
+  1186→+                if (p.type === 'splash') {
+  1187→+                    ctx.beginPath();
+  1188→+                    ctx.arc(p.x, py, 5, 0, Math.PI * 2);
+  1189→+                    ctx.fillStyle = p.color;
+  1190→+                    ctx.shadowColor = p.color;
+  1191→+                    ctx.shadowBlur = 8;
+  1192→+                    ctx.fill();
+  1193→+                    ctx.shadowBlur = 0;
+  1194→+                } else {
+  1195→+                    ctx.beginPath();
+  1196→+                    ctx.arc(p.x, py, 3, 0, Math.PI * 2);
+  1197→+                    ctx.fillStyle = p.color;
+  1198→+                    ctx.shadowColor = p.color;
+  1199→+                    ctx.shadowBlur = 5;
+  1200→+                    ctx.fill();
+  1201→+                    ctx.shadowBlur = 0;
+  1202→+                }
+  1203→+            }
+  1204→+        }
+  1205→+
+  1206→+        // ── Draw particles ────────────────────────────────────
+  1207→+        function drawParticles() {
+  1208→+            for (const p of particles) {
+  1209→+                ctx.beginPath();
+  1210→+                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+  1211→+                ctx.fillStyle = p.color + Math.floor(p.life * 255).toString(16).padStart(2, '0');
+  1212→+                ctx.fill();
+  1213→+            }
+  1214→+        }
+  1215→+
+  1216→+        // ── Draw floats ───────────────────────────────────────
+  1217→+        function drawFloats() {
+  1218→+            for (const f of floats) {
+  1219→+                ctx.font = '7px "Press Start 2P"';
+  1220→+                ctx.textAlign = 'center';
+  1221→+                ctx.textBaseline = 'middle';
+  1222→+                ctx.globalAlpha = Math.min(1, f.life * 2);
+  1223→+                ctx.fillStyle = f.color;
+  1224→+                ctx.shadowColor = f.color;
+  1225→+                ctx.shadowBlur = 4;
+  1226→+                ctx.fillText(f.text, f.x, f.y);
+  1227→+            }
+  1228→+            ctx.globalAlpha = 1;
+  1229→+            ctx.shadowBlur = 0;
+  1230→+        }
+  1231→+
+  1232→+        // ── Draw top bar ──────────────────────────────────────
+  1233→+        function drawTopBar() {
+  1234→+            ctx.fillStyle = '#020617';
+  1235→+            ctx.fillRect(0, 0, CW, BAR_H);
+  1236→+            ctx.strokeStyle = '#1e293b';
+  1237→+            ctx.lineWidth = 1;
+  1238→+            ctx.beginPath(); ctx.moveTo(0, BAR_H); ctx.lineTo(CW, BAR_H); ctx.stroke();
+  1239→+
+  1240→+            const items = [
+  1241→+                { label: '♥', value: lives,       color: '#ef4444', x: 12  },
+  1242→+                { label: '$', value: gold,         color: '#facc15', x: 130 },
+  1243→+                { label: '≋', value: `${wave}/${TOTAL_WAVES}`, color: '#a855f7', x: 280 },
+  1244→+                { label: '★', value: score,        color: '#38bdf8', x: 430 },
+  1245→+            ];
+  1246→+
+  1247→+            for (const it of items) {
+  1248→+                ctx.font = '8px "Press Start 2P"';
+  1249→+                ctx.textAlign = 'left';
+  1250→+                ctx.textBaseline = 'middle';
+  1251→+                ctx.fillStyle = it.color;
+  1252→+                ctx.shadowColor = it.color;
+  1253→+                ctx.shadowBlur = 6;
+  1254→+                ctx.fillText(it.label, it.x, BAR_H / 2);
+  1255→+                ctx.shadowBlur = 0;
+  1256→+                ctx.fillStyle = '#e2e8f0';
+  1257→+                ctx.font = '8px "Press Start 2P"';
+  1258→+                ctx.fillText(String(it.value), it.x + 14, BAR_H / 2);
+  1259→+            }
+  1260→+
+  1261→+            // Wave countdown or status
+  1262→+            if (!waveActive && gamePhase === 'playing' && wave < TOTAL_WAVES) {
+  1263→+                const cd = Math.ceil(waveCountdown);
+  1264→+                ctx.font = '7px "Press Start 2P"';
+  1265→+                ctx.textAlign = 'right';
+  1266→+                ctx.fillStyle = '#64748b';
+  1267→+                ctx.fillText(`NEXT WAVE IN ${cd}s  [SPACE]`, CW - SIDE_W - 10, BAR_H / 2);
+  1268→+            } else if (waveActive) {
+  1269→+                const rem = waveEnemies.length - waveSpawnIdx + enemies.filter(e => !e.dead).length;
+  1270→+                ctx.font = '7px "Press Start 2P"';
+  1271→+                ctx.textAlign = 'right';
+  1272→+                ctx.fillStyle = '#ef4444';
+  1273→+                ctx.shadowColor = '#ef4444';
+  1274→+                ctx.shadowBlur = 4;
+  1275→+                ctx.fillText(`WAVE ${wave}  ×${rem}`, CW - SIDE_W - 10, BAR_H / 2);
+  1276→+                ctx.shadowBlur = 0;
+  1277→+            }
+  1278→+        }
+  1279→+
+  1280→+        // ── Draw sidebar ──────────────────────────────────────
+  1281→+        function drawSidebar() {
+  1282→+            const sx = SIDEBAR_X;
+  1283→+            ctx.fillStyle = '#020617';
+  1284→+            ctx.fillRect(sx, 0, SIDE_W, CH);
+  1285→+            ctx.strokeStyle = '#1e293b';
+  1286→+            ctx.lineWidth = 1;
+  1287→+            ctx.beginPath(); ctx.moveTo(sx, BAR_H); ctx.lineTo(sx, CH); ctx.stroke();
+  1288→+
+  1289→+            const btnH = 52, btnY0 = BAR_H + 8;
+  1290→+            const pad = 6;
+  1291→+
+  1292→+            for (let i = 0; i < TOWER_TYPES.length; i++) {
+  1293→+                const type = TOWER_TYPES[i];
+  1294→+                const def = TOWER_DEFS[type];
+  1295→+                const by = btnY0 + i * (btnH + 6);
+  1296→+                const isSelected = type === selectedType;
+  1297→+
+  1298→+                // Button bg
+  1299→+                roundRect(sx + pad, by, SIDE_W - pad * 2, btnH, 4);
+  1300→+                ctx.fillStyle = isSelected ? def.color + '22' : '#0f172a';
+  1301→+                ctx.fill();
+  1302→+                ctx.strokeStyle = isSelected ? def.color : '#1e293b';
+  1303→+                ctx.lineWidth = isSelected ? 2 : 1;
+  1304→+                ctx.stroke();
+  1305→+
+  1306→+                // Key hint
+  1307→+                ctx.font = '6px "Press Start 2P"';
+  1308→+                ctx.textAlign = 'left';
+  1309→+                ctx.textBaseline = 'top';
+  1310→+                ctx.fillStyle = '#475569';
+  1311→+                ctx.fillText(`[${i + 1}]`, sx + pad + 4, by + 4);
+  1312→+
+  1313→+                // Tower name
+  1314→+                ctx.font = '7px "Press Start 2P"';
+  1315→+                ctx.textAlign = 'left';
+  1316→+                ctx.textBaseline = 'middle';
+  1317→+                ctx.fillStyle = isSelected ? def.color : '#94a3b8';
+  1318→+                if (isSelected) { ctx.shadowColor = def.color; ctx.shadowBlur = 6; }
+  1319→+                ctx.fillText(def.label, sx + pad + 6, by + 20);
+  1320→+                ctx.shadowBlur = 0;
+  1321→+
+  1322→+                // Cost
+  1323→+                ctx.font = '6px "Press Start 2P"';
+  1324→+                ctx.fillStyle = gold >= def.cost ? '#facc15' : '#ef4444';
+  1325→+                ctx.fillText(`$${def.cost}`, sx + pad + 6, by + 36);
+  1326→+
+  1327→+                // Range/stats mini
+  1328→+                ctx.textAlign = 'right';
+  1329→+                ctx.fillStyle = '#334155';
+  1330→+                ctx.fillText(`R:${def.range}`, sx + SIDE_W - pad - 4, by + 20);
+  1331→+                ctx.fillText(`D:${def.damage}`, sx + SIDE_W - pad - 4, by + 36);
+  1332→+            }
+  1333→+
+  1334→+            // Wave button
+  1335→+            const waveY = btnY0 + TOWER_TYPES.length * (btnH + 6) + 16;
+  1336→+            if (!waveActive && gamePhase === 'playing' && wave < TOTAL_WAVES) {
+  1337→+                roundRect(sx + pad, waveY, SIDE_W - pad * 2, 38, 4);
+  1338→+                ctx.fillStyle = '#14532d';
+  1339→+                ctx.fill();
+  1340→+                ctx.strokeStyle = '#22c55e';
+  1341→+                ctx.lineWidth = 1.5;
+  1342→+                ctx.stroke();
+  1343→+                ctx.font = '7px "Press Start 2P"';
+  1344→+                ctx.textAlign = 'center';
+  1345→+                ctx.textBaseline = 'middle';
+  1346→+                ctx.fillStyle = '#22c55e';
+  1347→+                ctx.shadowColor = '#22c55e';
+  1348→+                ctx.shadowBlur = 4;
+  1349→+                ctx.fillText(`WAVE ${wave + 1}`, sx + SIDE_W / 2, waveY + 13);
+  1350→+                ctx.shadowBlur = 0;
+  1351→+                ctx.font = '5px "Press Start 2P"';
+  1352→+                ctx.fillStyle = '#4ade80';
+  1353→+                ctx.fillText('SEND EARLY', sx + SIDE_W / 2, waveY + 28);
+  1354→+            } else if (waveActive) {
+  1355→+                roundRect(sx + pad, waveY, SIDE_W - pad * 2, 38, 4);
+  1356→+                ctx.fillStyle = '#1a0a0a';
+  1357→+                ctx.fill();
+  1358→+                ctx.strokeStyle = '#7f1d1d';
+  1359→+                ctx.lineWidth = 1;
+  1360→+                ctx.stroke();
+  1361→+                ctx.font = '6px "Press Start 2P"';
+  1362→+                ctx.textAlign = 'center';
+  1363→+                ctx.textBaseline = 'middle';
+  1364→+                ctx.fillStyle = '#ef4444';
+  1365→+                ctx.fillText('WAVE ACTIVE', sx + SIDE_W / 2, waveY + 19);
+  1366→+            }
+  1367→+
+  1368→+            // Selected tower info & upgrades
+  1369→+            const upgY0 = waveY + 56;
+  1370→+            if (selectedTower) {
+  1371→+                const t = selectedTower;
+  1372→+                const def = TOWER_DEFS[t.type];
+  1373→+
+  1374→+                ctx.font = '6px "Press Start 2P"';
+  1375→+                ctx.textAlign = 'center';
+  1376→+                ctx.textBaseline = 'middle';
+  1377→+                ctx.fillStyle = t.color;
+  1378→+                ctx.shadowColor = t.color; ctx.shadowBlur = 4;
+  1379→+                ctx.fillText(t.label + ' LV' + (t.upgradeLevel + 1), sx + SIDE_W / 2, upgY0 - 8);
+  1380→+                ctx.shadowBlur = 0;
+  1381→+
+  1382→+                for (let i = 0; i < 3; i++) {
+  1383→+                    const upg = def.upgrades[i];
+  1384→+                    const uy = upgY0 + i * 38;
+  1385→+                    const bought = t.upgradeLevel > i;
+  1386→+                    const available = t.upgradeLevel === i;
+  1387→+
+  1388→+                    roundRect(sx + pad, uy, SIDE_W - pad * 2, 32, 3);
+  1389→+                    ctx.fillStyle = bought ? '#1e293b' : available ? '#0f172a' : '#050a14';
+  1390→+                    ctx.fill();
+  1391→+                    ctx.strokeStyle = bought ? '#22c55e' : available ? '#a855f7' : '#1e293b';
+  1392→+                    ctx.lineWidth = 1;
+  1393→+                    ctx.stroke();
+  1394→+
+  1395→+                    ctx.font = '6px "Press Start 2P"';
+  1396→+                    ctx.textAlign = 'left';
+  1397→+                    ctx.textBaseline = 'middle';
+  1398→+                    ctx.fillStyle = bought ? '#22c55e' : available ? '#c084fc' : '#334155';
+  1399→+                    ctx.fillText(bought ? '✓ ' + upg.label : upg.label, sx + pad + 5, uy + 11);
+  1400→+
+  1401→+                    if (!bought) {
+  1402→+                        ctx.textAlign = 'right';
+  1403→+                        ctx.fillStyle = available && gold >= upg.cost ? '#facc15' : '#4b5563';
+  1404→+                        ctx.fillText('$' + upg.cost, sx + SIDE_W - pad - 5, uy + 11);
+  1405→+                    }
+  1406→+
+  1407→+                    ctx.font = '5px "Press Start 2P"';
+  1408→+                    ctx.textAlign = 'left';
+  1409→+                    ctx.textBaseline = 'middle';
+  1410→+                    ctx.fillStyle = '#475569';
+  1411→+                    ctx.fillText(available ? 'CLICK TO BUY' : (bought ? 'MAXED' : 'LOCKED'), sx + pad + 5, uy + 24);
+  1412→+                }
+  1413→+
+  1414→+                // Sell hint
+  1415→+                ctx.font = '5px "Press Start 2P"';
+  1416→+                ctx.textAlign = 'center';
+  1417→+                ctx.fillStyle = '#334155';
+  1418→+                ctx.fillText('[ESC] DESELECT', sx + SIDE_W / 2, upgY0 + 3 * 38 + 12);
+  1419→+            } else {
+  1420→+                ctx.font = '5px "Press Start 2P"';
+  1421→+                ctx.textAlign = 'center';
+  1422→+                ctx.textBaseline = 'middle';
+  1423→+                ctx.fillStyle = '#1e293b';
+  1424→+                ctx.fillText('CLICK TOWER', sx + SIDE_W / 2, upgY0 + 10);
+  1425→+                ctx.fillText('TO UPGRADE', sx + SIDE_W / 2, upgY0 + 24);
+  1426→+            }
+  1427→+        }
+  1428→+
+  1429→+        // ── Main draw ─────────────────────────────────────────
+  1430→+        function draw() {
+  1431→+            ctx.clearRect(0, 0, CW, CH);
+  1432→+            drawGrid();
+  1433→+            drawPath();
+  1434→+            drawTowers();
+  1435→+            drawEnemies();
+  1436→+            drawProjectiles();
+  1437→+            drawParticles();
+  1438→+            drawFloats();
+  1439→+            drawTopBar();
+  1440→+            drawSidebar();
+  1441→+        }
+  1442→+
+  1443→+        // ── Game loop ─────────────────────────────────────────
+  1444→+        function loop(ts) {
+  1445→+            const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  1446→+            lastTime = ts;
+  1447→+            update(dt);
+  1448→+            draw();
+  1449→+            requestAnimationFrame(loop);
+  1450→+        }
+  1451→+
+  1452→+        // ── Start ─────────────────────────────────────────────
+  1453→+        document.getElementById('startBtn').addEventListener('click', () => {
+  1454→+            document.getElementById('overlay').classList.remove('show');
+  1455→+            resetGame();
+  1456→+            requestAnimationFrame(ts => { lastTime = ts; loop(ts); });
+  1457→+        });
+  1458→+
+  1459→+        // Initial draw (static)
+  1460→+        resetGame();
+  1461→+        draw();
+  1462→+    </script>
+  1463→+</body>
+  1464→+</html>
+  1465→diff --git a/index.html b/index.html
+  1466→index 0c1523d..b32545a 100644
+  1467→--- a/index.html
+  1468→+++ b/index.html
+  1469→@@ -631,6 +631,34 @@ const flappyPixels = [
+  1470→ ];
+  1471→ 
+  1472→ /* ── Game definitions ──────────────────────────────────── */
+  1473→+// Tower Defense — winding path with towers and enemies
+  1474→+const TD = '#a855f7', TG = '#22c55e', TR = '#ef4444', TY = '#facc15', TB = '#38bdf8';
+  1475→+const towerDefPixels = [
+  1476→+    // Path background (dark blue)
+  1477→+    ...[3,4,5,6,7,8,9].map(c => [4, c, '#1e293b']),
+  1478→+    ...[5,6,7].map(r => [r, 4, '#1e293b']),
+  1479→+    ...[5,6,7].map(r => [r, 9, '#1e293b']),
+  1480→+    ...[8,9,10,11,12].map(c => [7, c, '#1e293b']),
+  1481→+    // Path arrows (lighter)
+  1482→+    [4,6,'#334155'],[4,7,'#334155'],[4,8,'#334155'],
+  1483→+    [6,4,'#334155'],[6,9,'#334155'],
+  1484→+    [7,10,'#334155'],[7,11,'#334155'],
+  1485→+    // Arrow tower (green)
+  1486→+    [2,2,TG],[3,2,TG],[2,1,'#86efac'],
+  1487→+    // Cannon tower (orange)
+  1488→+    [2,12,'#f97316'],[3,12,'#f97316'],[2,13,'#fdba74'],
+  1489→+    // Ice tower (blue)
+  1490→+    [6,1,TB],[7,1,TB],[6,2,'#bae6fd'],
+  1491→+    // Lightning tower (purple)
+  1492→+    [6,13,TD],[7,13,TD],[6,14,'#d8b4fe'],
+  1493→+    // Enemy dots (red)
+  1494→+    [4,5,TR],[5,9,TR],[7,12,TR],
+  1495→+    // Gold coins
+  1496→+    [1,7,TY],[1,8,TY],
+  1497→+    // Wave indicator
+  1498→+    [9,3,'#a855f7'],[9,4,'#a855f7'],[9,5,'#a855f7'],
+  1499→+];
+  1500→+
+  1501→ const GAMES = [
+  1502→     {
+  1503→         name: 'SNAKE',
+  1504→@@ -712,6 +740,14 @@ const GAMES = [
+  1505→         glow:  'rgba(250,204,21,0.35)',
+  1506→         pixels: flappyPixels,
+  1507→     },
+  1508→+    {
+  1509→+        name: 'TOWER DEFENSE',
+  1510→+        desc: 'Place towers to stop the enemy horde.',
+  1511→+        href: 'games/tower-defense/index.html',
+  1512→+        color: '#a855f7',
+  1513→+        glow:  'rgba(168,85,247,0.35)',
+  1514→+        pixels: towerDefPixels,
+  1515→+    },
+  1516→ ];
+  1517→ 
+  1518→ /* ── Render cards ─────────────────────────────────────── */
+  1519→
+
+<system-reminder>
+Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+</system-reminder>
