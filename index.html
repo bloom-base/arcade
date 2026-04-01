@@ -598,6 +598,38 @@ const minesweeperPixels = [
     [5,12,'#ef4444'],[9,12,'#ef4444'],[7,10,'#ef4444'],[7,14,'#ef4444'],
 ];
 
+// Flappy Bird — yellow bird in flight between green pipes
+const FY = '#facc15', FO = '#f97316', FG = '#4ade80', FD = '#166534', FW = '#ffffff';
+const flappyPixels = [
+    // Top pipe body (cols 11–13, rows 0–2)
+    [0,11,FG],[0,12,FG],[0,13,FG],
+    [1,11,FG],[1,12,FG],[1,13,FG],
+    [2,11,FG],[2,12,FG],[2,13,FG],
+    // Top pipe cap wider (cols 10–14, row 3)
+    [3,10,FG],[3,11,FG],[3,12,FG],[3,13,FG],[3,14,FG],
+    // Dark left edge on top pipe
+    [0,11,FD],[1,11,FD],[2,11,FD],[3,10,FD],
+    // Bird body (rows 4–5, cols 2–7)
+    [4,2,FY],[4,3,FY],[4,4,FY],[4,5,FY],[4,6,FY],
+    [5,2,FY],[5,3,FY],[5,4,FY],[5,5,FY],[5,6,FY],
+    // Beak
+    [4,7,FO],[5,7,FO],
+    // Eye
+    [4,5,FW],
+    // Wing detail
+    [5,3,'#ca8a04'],[5,4,'#ca8a04'],
+    // Bottom pipe cap (cols 10–14, row 6)
+    [6,10,FG],[6,11,FG],[6,12,FG],[6,13,FG],[6,14,FG],
+    // Dark left edge on bottom pipe cap
+    [6,10,FD],
+    // Bottom pipe body (cols 11–13, rows 7–9)
+    [7,11,FG],[7,12,FG],[7,13,FG],
+    [8,11,FG],[8,12,FG],[8,13,FG],
+    [9,11,FG],[9,12,FG],[9,13,FG],
+    // Dark left edge on bottom pipe body
+    [7,11,FD],[8,11,FD],[9,11,FD],
+];
+
 /* ── Game definitions ──────────────────────────────────── */
 const GAMES = [
     {
@@ -672,6 +704,14 @@ const GAMES = [
         glow:  'rgba(56,189,248,0.35)',
         pixels: minesweeperPixels,
     },
+    {
+        name: 'FLAPPY BIRD',
+        desc: 'Flap through the gaps — one touch keeps you airborne.',
+        href: 'games/flappy-bird/index.html',
+        color: '#facc15',
+        glow:  'rgba(250,204,21,0.35)',
+        pixels: flappyPixels,
+    },
 ];
 
 /* ── Render cards ─────────────────────────────────────── */
@@ -730,10 +770,11 @@ function initDifficulty() {
 
 /* ── Leaderboard ──────────────────────────────────────── */
 const GAME_COLOR = {
-    snake:    '#22c55e',
-    tetris:   '#22d3ee',
-    breakout: '#fbbf24',
-    solitaire:'#f472b6',
+    snake:         '#22c55e',
+    tetris:        '#22d3ee',
+    breakout:      '#fbbf24',
+    solitaire:     '#f472b6',
+    'flappy-bird': '#facc15',
 };
 
 function timeAgo(ts) {
