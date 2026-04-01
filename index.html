@@ -631,6 +631,34 @@ const flappyPixels = [
 ];
 
 /* ── Game definitions ──────────────────────────────────── */
+// Tower Defense — winding path with towers and enemies
+const TD = '#a855f7', TG = '#22c55e', TR = '#ef4444', TY = '#facc15', TB = '#38bdf8';
+const towerDefPixels = [
+    // Path background (dark blue)
+    ...[3,4,5,6,7,8,9].map(c => [4, c, '#1e293b']),
+    ...[5,6,7].map(r => [r, 4, '#1e293b']),
+    ...[5,6,7].map(r => [r, 9, '#1e293b']),
+    ...[8,9,10,11,12].map(c => [7, c, '#1e293b']),
+    // Path arrows (lighter)
+    [4,6,'#334155'],[4,7,'#334155'],[4,8,'#334155'],
+    [6,4,'#334155'],[6,9,'#334155'],
+    [7,10,'#334155'],[7,11,'#334155'],
+    // Arrow tower (green)
+    [2,2,TG],[3,2,TG],[2,1,'#86efac'],
+    // Cannon tower (orange)
+    [2,12,'#f97316'],[3,12,'#f97316'],[2,13,'#fdba74'],
+    // Ice tower (blue)
+    [6,1,TB],[7,1,TB],[6,2,'#bae6fd'],
+    // Lightning tower (purple)
+    [6,13,TD],[7,13,TD],[6,14,'#d8b4fe'],
+    // Enemy dots (red)
+    [4,5,TR],[5,9,TR],[7,12,TR],
+    // Gold coins
+    [1,7,TY],[1,8,TY],
+    // Wave indicator
+    [9,3,'#a855f7'],[9,4,'#a855f7'],[9,5,'#a855f7'],
+];
+
 const GAMES = [
     {
         name: 'SNAKE',
@@ -711,6 +739,14 @@ const GAMES = [
         color: '#facc15',
         glow:  'rgba(250,204,21,0.35)',
         pixels: flappyPixels,
+    },
+    {
+        name: 'TOWER DEFENSE',
+        desc: 'Place towers to stop the enemy horde.',
+        href: 'games/tower-defense/index.html',
+        color: '#a855f7',
+        glow:  'rgba(168,85,247,0.35)',
+        pixels: towerDefPixels,
     },
 ];
 
