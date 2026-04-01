@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MINESWEEPER — arcade</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a0a;
+            color: #fafafa;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Press Start 2P', monospace;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            padding: 3.5rem 1rem 1rem;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent 0, transparent 3px,
+                rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
+            );
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* ── Fixed buttons ── */
+        .back-btn {
+            position: fixed;
+            top: 1.25rem;
+            left: 1.25rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+            color: #444;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 0.875rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .back-btn:hover { color: #fafafa; border-color: #555; }
+
+        .mute-btn {
+            position: fixed;
+            top: 1.25rem;
+            right: 1.25rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+            color: #444;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 0.875rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+        }
+        .mute-btn:hover { color: #fafafa; border-color: #555; }
+        .mute-btn.muted { color: #ef4444; border-color: #7f1d1d; }
+
+        /* ── Game wrap ── */
+        #game-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        #title {
+            font-size: clamp(0.55rem, 2.5vw, 0.875rem);
+            letter-spacing: 0.25em;
+            color: #38bdf8;
+            text-shadow: 0 0 24px rgba(56,189,248,0.6);
+            margin-bottom: 0.25rem;
+        }
+
+        /* ── Difficulty selector ── */
+        #diff-row {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .diff-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.45rem;
+            padding: 0.4rem 0.65rem;
+            border: 1px solid #333;
+            background: transparent;
+            color: #555;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s;
+        }
+        .diff-btn:hover { color: #aaa; border-color: #555; }
+        .diff-btn.active { color: #38bdf8; border-color: #38bdf8; }
+
+        /* ── HUD ── */
+        #hud {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0 0.25rem;
+            gap: 0.5rem;
+        }
+
+        .hud-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            min-width: 80px;
+        }
+
+        .hud-label {
+            font-size: 0.35rem;
+            color: #444;
+            letter-spacing: 0.1em;
+        }
+
+        .hud-value {
+            font-size: clamp(0.6rem, 2vw, 0.875rem);
+            color: #38bdf8;
+            text-shadow: 0 0 12px rgba(56,189,248,0.5);
+            min-width: 3ch;
+            text-align: center;
+        }
+
+        #reset-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(0.5rem, 1.5vw, 0.65rem);
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #333;
+            background: transparent;
+            color: #666;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s, text-shadow 0.15s;
+        }
+        #reset-btn:hover {
+            color: #38bdf8;
+            border-color: #38bdf8;
+            text-shadow: 0 0 10px rgba(56,189,248,0.5);
+        }
+
+        /* ── Grid container ── */
+        #grid-container {
+            position: relative;
+            border: 1px solid #222;
+        }
+
+        #grid {
+            display: grid;
+            gap: 1px;
+            background: #111;
+            touch-action: none;
+        }
+
+        /* ── Cells ── */
+        .cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--cell-font);
+            cursor: pointer;
+            transition: background 0.07s;
+            position: relative;
+            border: 1px solid #2a2a2a;
+        }
+
+        .cell:hover:not(.revealed):not(.flagged) {
+            background: #252525;
+            border-color: #38bdf8;
+        }
+
+        .cell.revealed {
+            background: #111;
+            border-color: #1e1e1e;
+            cursor: default;
+        }
+
+        .cell.flagged {
+            background: #1a1a1a;
+            border-color: #ef4444;
+        }
+
+        .cell.mine-hit {
+            background: #450a0a;
+            border-color: #ef4444;
+        }
+
+        .cell.mine-revealed {
+            background: #111;
+            border-color: #1e1e1e;
+        }
+
+        /* Number colors */
+        .n1 { color: #38bdf8; }
+        .n2 { color: #4ade80; }
+        .n3 { color: #ef4444; }
+        .n4 { color: #a855f7; }
+        .n5 { color: #f97316; }
+        .n6 { color: #22d3ee; }
+        .n7 { color: #f472b6; }
+        .n8 { color: #94a3b8; }
+
+        /* ── Overlay ── */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.82);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            z-index: 60;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        #overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #overlay-title {
+            font-size: clamp(1rem, 5vw, 1.75rem);
+            letter-spacing: 0.2em;
+        }
+        #overlay-title.win  { color: #38bdf8; text-shadow: 0 0 30px rgba(56,189,248,0.7); }
+        #overlay-title.lose { color: #ef4444; text-shadow: 0 0 30px rgba(239,68,68,0.7); }
+
+        #overlay-sub {
+            font-size: clamp(0.4rem, 1.5vw, 0.6rem);
+            color: #555;
+            letter-spacing: 0.1em;
+            text-align: center;
+            line-height: 2;
+        }
+
+        #overlay-best {
+            font-size: clamp(0.35rem, 1.2vw, 0.55rem);
+            color: #38bdf8;
+            letter-spacing: 0.1em;
+        }
+
+        #overlay-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(0.45rem, 1.5vw, 0.65rem);
+            padding: 0.75rem 1.25rem;
+            border: 1px solid #38bdf8;
+            background: transparent;
+            color: #38bdf8;
+            cursor: pointer;
+            letter-spacing: 0.1em;
+            transition: background 0.15s, color 0.15s;
+        }
+        #overlay-btn:hover { background: #38bdf8; color: #000; }
+
+        /* ── Best times ── */
+        #best-times {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .best-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.4rem 0.6rem;
+            border: 1px solid #222;
+        }
+        .best-label { font-size: 0.3rem; color: #444; letter-spacing: 0.1em; }
+        .best-val   { font-size: 0.5rem; color: #38bdf8; }
+
+        /* ── Responsive cell sizing ── */
+        @media (max-width: 480px) {
+            body { padding: 3rem 0.5rem 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <a class="back-btn" href="../../index.html">← BACK</a>
+    <button class="mute-btn" id="muteBtn">♪ SFX</button>
+
+    <div id="game-wrap">
+        <div id="title">MINESWEEPER</div>
+
+        <div id="diff-row">
+            <button class="diff-btn active" data-diff="beginner">BEGINNER</button>
+            <button class="diff-btn" data-diff="intermediate">INTERMEDIATE</button>
+            <button class="diff-btn" data-diff="expert">EXPERT</button>
+        </div>
+
+        <div id="hud">
+            <div class="hud-block">
+                <div class="hud-label">MINES</div>
+                <div class="hud-value" id="mine-count">010</div>
+            </div>
+            <button id="reset-btn">NEW GAME</button>
+            <div class="hud-block">
+                <div class="hud-label">TIME</div>
+                <div class="hud-value" id="timer">000</div>
+            </div>
+        </div>
+
+        <div id="grid-container">
+            <div id="grid"></div>
+        </div>
+
+        <div id="best-times">
+            <div class="best-item">
+                <div class="best-label">BEGINNER BEST</div>
+                <div class="best-val" id="best-beginner">---</div>
+            </div>
+            <div class="best-item">
+                <div class="best-label">INTER. BEST</div>
+                <div class="best-val" id="best-intermediate">---</div>
+            </div>
+            <div class="best-item">
+                <div class="best-label">EXPERT BEST</div>
+                <div class="best-val" id="best-expert">---</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <div id="overlay-title"></div>
+        <div id="overlay-sub"></div>
+        <div id="overlay-best"></div>
+        <button id="overlay-btn">PLAY AGAIN</button>
+    </div>
+
+    <script type="module">
+    /* ── Audio ───────────────────────────────────────────── */
+    let muted = false;
+    let audioCtx = null;
+
+    function getAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        return audioCtx;
+    }
+
+    function tone(freq, type, dur, vol = 0.18, delay = 0) {
+        if (muted) return;
+        try {
+            const ctx = getAudio();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+            gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + dur + 0.01);
+        } catch(e) {}
+    }
+
+    const sfx = {
+        reveal : () => tone(600, 'sine', 0.04, 0.12),
+        flag   : () => tone(880, 'square', 0.06, 0.1),
+        unflag : () => tone(440, 'square', 0.06, 0.08),
+        chord  : (n) => {
+            // Pitch rises with number
+            const freqs = [0, 300, 350, 400, 450, 500, 550, 600, 650];
+            tone(freqs[n] || 300, 'sine', 0.05, 0.12);
+        },
+        explode: () => {
+            // Descending noise burst
+            [400, 300, 200, 150].forEach((f, i) => tone(f, 'sawtooth', 0.12, 0.2, i * 0.07));
+        },
+        win: () => {
+            // Ascending fanfare
+            [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 'square', 0.13, 0.18, i * 0.1));
+        },
+        newBest: () => {
+            [784, 988, 1175, 1568].forEach((f, i) => tone(f, 'square', 0.15, 0.2, i * 0.12));
+        },
+        open: () => tone(200, 'sine', 0.03, 0.08), // cascade / chord open
+    };
+
+    document.getElementById('muteBtn').addEventListener('click', () => {
+        muted = !muted;
+        document.getElementById('muteBtn').textContent = muted ? '✕ SFX' : '♪ SFX';
+        document.getElementById('muteBtn').classList.toggle('muted', muted);
+    });
+
+    /* ── Difficulty configs ─────────────────────────────── */
+    const CONFIGS = {
+        beginner:     { rows: 9,  cols: 9,  mines: 10 },
+        intermediate: { rows: 16, cols: 16, mines: 40 },
+        expert:       { rows: 16, cols: 30, mines: 99 },
+    };
+
+    /* ── State ───────────────────────────────────────────── */
+    let difficulty = 'beginner';
+    let cfg = CONFIGS[difficulty];
+    let board       = [];   // flat array, length rows*cols
+    let revealed    = [];
+    let flagged     = [];
+    let mineSet     = new Set();
+    let gameOver    = false;
+    let gameWon     = false;
+    let started     = false;
+    let timerVal    = 0;
+    let timerID     = null;
+    let flagCount   = 0;
+
+    /* ── Persistence ─────────────────────────────────────── */
+    const STORAGE_KEY = 'arcade_minesweeper_best';
+
+    function getBests() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+        catch { return {}; }
+    }
+    function saveBest(diff, secs) {
+        const bests = getBests();
+        if (!bests[diff] || secs < bests[diff]) {
+            bests[diff] = secs;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(bests));
+            return true; // new best
+        }
+        return false;
+    }
+    function renderBests() {
+        const bests = getBests();
+        ['beginner','intermediate','expert'].forEach(d => {
+            const el = document.getElementById('best-' + d);
+            el.textContent = bests[d] != null ? String(bests[d]).padStart(3, '0') + 's' : '---';
+        });
+    }
+
+    /* ── Grid helpers ────────────────────────────────────── */
+    const idx  = (r, c) => r * cfg.cols + c;
+    const row  = (i)    => Math.floor(i / cfg.cols);
+    const col  = (i)    => i % cfg.cols;
+
+    function neighbors(i) {
+        const r = row(i), c = col(i), res = [];
+        for (let dr = -1; dr <= 1; dr++)
+            for (let dc = -1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                const nr = r + dr, nc = c + dc;
+                if (nr >= 0 && nr < cfg.rows && nc >= 0 && nc < cfg.cols)
+                    res.push(idx(nr, nc));
+            }
+        return res;
+    }
+
+    function countAdjacentMines(i) {
+        return neighbors(i).filter(n => mineSet.has(n)).length;
+    }
+
+    /* ── Mine placement (first-click safe) ───────────────── */
+    function placeMines(safeIdx) {
+        mineSet.clear();
+        const safe = new Set(neighbors(safeIdx).concat([safeIdx]));
+        const total = cfg.rows * cfg.cols;
+        while (mineSet.size < cfg.mines) {
+            const r = Math.floor(Math.random() * total);
+            if (!safe.has(r)) mineSet.add(r);
+        }
+    }
+
+    /* ── Flood-fill reveal ───────────────────────────────── */
+    function floodReveal(start) {
+        const queue = [start];
+        const visited = new Set();
+        let count = 0;
+        while (queue.length) {
+            const i = queue.shift();
+            if (visited.has(i) || revealed[i] || flagged[i]) continue;
+            visited.add(i);
+            revealed[i] = true;
+            count++;
+            renderCell(i);
+            const adj = countAdjacentMines(i);
+            if (adj === 0 && !mineSet.has(i)) {
+                neighbors(i).forEach(n => { if (!visited.has(n)) queue.push(n); });
+            }
+        }
+        return count;
+    }
+
+    /* ── Win check ───────────────────────────────────────── */
+    function checkWin() {
+        const total = cfg.rows * cfg.cols;
+        for (let i = 0; i < total; i++) {
+            if (!mineSet.has(i) && !revealed[i]) return false;
+        }
+        return true;
+    }
+
+    /* ── Timer ───────────────────────────────────────────── */
+    function startTimer() {
+        if (timerID) return;
+        timerID = setInterval(() => {
+            timerVal = Math.min(timerVal + 1, 999);
+            document.getElementById('timer').textContent = String(timerVal).padStart(3, '0');
+        }, 1000);
+    }
+    function stopTimer() {
+        clearInterval(timerID);
+        timerID = null;
+    }
+
+    /* ── Cell rendering ──────────────────────────────────── */
+    function cellText(i) {
+        if (flagged[i]) return '🚩';
+        if (!revealed[i]) return '';
+        if (mineSet.has(i)) return '💥';
+        const n = countAdjacentMines(i);
+        return n > 0 ? String(n) : '';
+    }
+
+    function renderCell(i) {
+        const el = document.getElementById('c' + i);
+        if (!el) return;
+        el.className = 'cell';
+        const text = cellText(i);
+
+        if (revealed[i]) {
+            if (mineSet.has(i)) {
+                el.classList.add(el.dataset.hit === '1' ? 'mine-hit' : 'mine-revealed');
+            } else {
+                el.classList.add('revealed');
+                const n = countAdjacentMines(i);
+                if (n > 0) el.classList.add('n' + n);
+            }
+        } else if (flagged[i]) {
+            el.classList.add('flagged');
+        }
+        el.textContent = text;
+    }
+
+    function renderAllCells() {
+        const total = cfg.rows * cfg.cols;
+        for (let i = 0; i < total; i++) renderCell(i);
+    }
+
+    /* ── Cell sizing ─────────────────────────────────────── */
+    function computeCellSize() {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        // Available space for grid (leave room for HUD etc.)
+        const availW = Math.min(vw - 16, 680);
+        const availH = vh - 220;
+        const byW = Math.floor((availW - cfg.cols) / cfg.cols);
+        const byH = Math.floor((availH - cfg.rows) / cfg.rows);
+        return Math.max(Math.min(byW, byH, 36), 18);
+    }
+
+    /* ── Build grid DOM ──────────────────────────────────── */
+    function buildGrid() {
+        const size = computeCellSize();
+        const grid = document.getElementById('grid');
+        grid.style.gridTemplateColumns = `repeat(${cfg.cols}, ${size}px)`;
+        document.documentElement.style.setProperty('--cell-size', size + 'px');
+        document.documentElement.style.setProperty('--cell-font', Math.max(Math.floor(size * 0.45), 8) + 'px');
+
+        grid.innerHTML = '';
+        const total = cfg.rows * cfg.cols;
+        // Build in fragment for performance
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i < total; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.id = 'c' + i;
+            cell.dataset.idx = i;
+            frag.appendChild(cell);
+        }
+        grid.appendChild(frag);
+    }
+
+    /* ── Input handling ──────────────────────────────────── */
+    let longPressTimer = null;
+    let longPressTarget = null;
+
+    function onCellClick(i) {
+        if (gameOver || gameWon) return;
+        if (flagged[i] || revealed[i]) return;
+
+        if (!started) {
+            started = true;
+            placeMines(i);
+            startTimer();
+        }
+
+        if (mineSet.has(i)) {
+            // Lose
+            revealed[i] = true;
+            document.getElementById('c' + i).dataset.hit = '1';
+            stopTimer();
+            gameOver = true;
+            sfx.explode();
+            // Reveal all mines
+            mineSet.forEach(m => {
+                if (!flagged[m]) { revealed[m] = true; }
+            });
+            renderAllCells();
+            setTimeout(() => showOverlay(false), 600);
+            return;
+        }
+
+        sfx.reveal();
+        floodReveal(i);
+
+        // Play chord sound for numbered cells
+        const adj = countAdjacentMines(i);
+        if (adj > 0) sfx.chord(adj);
+
+        if (checkWin()) {
+            stopTimer();
+            gameWon = true;
+            sfx.win();
+            // Auto-flag remaining mines
+            mineSet.forEach(m => { if (!revealed[m]) flagged[m] = true; });
+            flagCount = mineSet.size;
+            updateMineCounter();
+            renderAllCells();
+            setTimeout(() => showOverlay(true), 400);
+        }
+    }
+
+    function onCellFlag(i) {
+        if (gameOver || gameWon || revealed[i]) return;
+        if (!flagged[i]) {
+            flagged[i] = true;
+            flagCount++;
+            sfx.flag();
+        } else {
+            flagged[i] = false;
+            flagCount--;
+            sfx.unflag();
+        }
+        renderCell(i);
+        updateMineCounter();
+    }
+
+    function updateMineCounter() {
+        document.getElementById('mine-count').textContent =
+            String(Math.max(cfg.mines - flagCount, 0)).padStart(3, '0');
+    }
+
+    /* ── Event delegation on grid ────────────────────────── */
+    const gridEl = document.getElementById('grid');
+
+    gridEl.addEventListener('click', e => {
+        const cell = e.target.closest('.cell');
+        if (!cell) return;
+        onCellClick(parseInt(cell.dataset.idx));
+    });
+
+    gridEl.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        const cell = e.target.closest('.cell');
+        if (!cell) return;
+        onCellFlag(parseInt(cell.dataset.idx));
+    });
+
+    // Touch: long-press to flag
+    gridEl.addEventListener('touchstart', e => {
+        const cell = e.target.closest('.cell');
+        if (!cell) return;
+        longPressTarget = parseInt(cell.dataset.idx);
+        longPressTimer = setTimeout(() => {
+            onCellFlag(longPressTarget);
+            longPressTarget = null;
+        }, 500);
+    }, { passive: true });
+
+    gridEl.addEventListener('touchend', e => {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+    }, { passive: true });
+
+    gridEl.addEventListener('touchmove', e => {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+    }, { passive: true });
+
+    /* ── Overlay ─────────────────────────────────────────── */
+    function showOverlay(win) {
+        const ov = document.getElementById('overlay');
+        const title = document.getElementById('overlay-title');
+        const sub = document.getElementById('overlay-sub');
+        const bestEl = document.getElementById('overlay-best');
+
+        title.textContent = win ? 'YOU WIN!' : 'BOOM!';
+        title.className = win ? 'win' : 'lose';
+
+        if (win) {
+            const isNew = saveBest(difficulty, timerVal);
+            renderBests();
+            sub.textContent = `CLEARED IN ${timerVal}s`;
+            if (isNew) {
+                bestEl.textContent = '★ NEW BEST TIME ★';
+                sfx.newBest();
+            } else {
+                const bests = getBests();
+                bestEl.textContent = `BEST: ${bests[difficulty]}s`;
+            }
+        } else {
+            sub.textContent = `BETTER LUCK NEXT TIME`;
+            bestEl.textContent = '';
+        }
+
+        ov.classList.add('show');
+    }
+
+    document.getElementById('overlay-btn').addEventListener('click', () => {
+        document.getElementById('overlay').classList.remove('show');
+        newGame();
+    });
+
+    /* ── New game ────────────────────────────────────────── */
+    function newGame() {
+        stopTimer();
+        timerVal  = 0;
+        flagCount = 0;
+        gameOver  = false;
+        gameWon   = false;
+        started   = false;
+        cfg       = CONFIGS[difficulty];
+
+        const total = cfg.rows * cfg.cols;
+        board    = new Array(total).fill(0);
+        revealed = new Array(total).fill(false);
+        flagged  = new Array(total).fill(false);
+        mineSet.clear();
+
+        document.getElementById('timer').textContent = '000';
+        updateMineCounter();
+        buildGrid();
+    }
+
+    /* ── Difficulty buttons ──────────────────────────────── */
+    document.querySelectorAll('.diff-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            difficulty = btn.dataset.diff;
+            document.getElementById('overlay').classList.remove('show');
+            newGame();
+        });
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', () => {
+        document.getElementById('overlay').classList.remove('show');
+        newGame();
+    });
+
+    window.addEventListener('resize', () => {
+        // Rebuild grid at new size, preserving state
+        const size = computeCellSize();
+        const grid = document.getElementById('grid');
+        grid.style.gridTemplateColumns = `repeat(${cfg.cols}, ${size}px)`;
+        document.documentElement.style.setProperty('--cell-size', size + 'px');
+        document.documentElement.style.setProperty('--cell-font', Math.max(Math.floor(size * 0.45), 8) + 'px');
+    });
+
+    /* ── Init ────────────────────────────────────────────── */
+    renderBests();
+    newGame();
+    </script>
+</body>
+</html>

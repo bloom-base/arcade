@@ -577,6 +577,27 @@ const simonPixels = [
     [5,9,SYL],[5,10,SYL],[6,9,SYL],
 ];
 
+// Minesweeper — dark grid with numbered cells, flags and a mine
+const MC = '#38bdf8', MG = '#1e293b', MF = '#ef4444', MM = '#111', MB = '#1a1a1a';
+const minesweeperPixels = [
+    // Grid background: all cells dark
+    ...[0,1,2,3,4,5,6,7,8,9].flatMap(r => Array.from({length:16}, (_,c) => [r, c, MM])),
+    // Revealed cells (lighter): a 4x4 block top-left
+    ...[0,1,2,3].flatMap(r => [0,1,2,3].map(c => [r, c, MG])),
+    // Numbers in revealed block
+    [0,0,MC],[1,1,MC],[2,2,MC],[0,3,MC],
+    // Flag in unrevealed cell (col 7, rows 3-5)
+    [3,7,MB],[4,7,MB],[5,7,MB],
+    [3,8,MF],[4,8,MF],
+    [5,8,MB],
+    // Mine (dark circle with spikes) at col 11-13, row 6-8
+    [6,11,'#555'],[6,12,MC],[6,13,'#555'],
+    [7,11,MC],[7,12,'#1a1a1a'],[7,13,MC],
+    [8,11,'#555'],[8,12,MC],[8,13,'#555'],
+    // Blast/explosion hint
+    [5,12,'#ef4444'],[9,12,'#ef4444'],[7,10,'#ef4444'],[7,14,'#ef4444'],
+];
+
 /* ── Game definitions ──────────────────────────────────── */
 const GAMES = [
     {
@@ -642,6 +663,14 @@ const GAMES = [
         color: '#ef4444',
         glow:  'rgba(239,68,68,0.35)',
         pixels: whacPixels,
+    },
+    {
+        name: 'MINESWEEPER',
+        desc: 'Defuse the minefield — one wrong click and it\'s over.',
+        href: 'games/minesweeper/index.html',
+        color: '#38bdf8',
+        glow:  'rgba(56,189,248,0.35)',
+        pixels: minesweeperPixels,
     },
 ];
 
