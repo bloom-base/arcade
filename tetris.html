@@ -230,7 +230,7 @@
     </style>
 </head>
 <body>
-    <a class="back-btn" href="index.html">← back</a>
+    <a class="back-btn" href="index.html#games">← back</a>
     <button class="mute-btn" id="mute-btn">MUTE</button>
 
     <div id="game-wrap">
@@ -275,7 +275,7 @@
         <div id="overlay-title">GAME OVER</div>
         <div id="overlay-score"></div>
         <button class="overlay-btn" id="btn-restart">PLAY AGAIN</button>
-        <a class="overlay-btn" href="index.html">BACK TO ARCADE</a>
+        <a class="overlay-btn" href="index.html#games">BACK TO ARCADE</a>
     </div>
 
     <div id="score-pop"></div>
@@ -755,7 +755,7 @@
                     toggleMute();
                     break;
                 case 'Escape':
-                    window.location.href = 'index.html';
+                    window.location.href = 'index.html#games';
                     break;
             }
         });

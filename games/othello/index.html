@@ -190,7 +190,7 @@
 </head>
 <body>
 
-<a class="back-btn" href="../../index.html">← BACK</a>
+<a class="back-btn" href="../../index.html#games">← BACK</a>
 <button class="mute-btn" id="muteBtn" title="M to toggle">♪ SFX</button>
 
 <div id="game-wrap">
@@ -218,7 +218,7 @@
     <div id="overlay-winner"></div>
     <div id="overlay-final"></div>
     <button class="menu-btn primary" id="newGameBtn">NEW GAME</button>
-    <a class="menu-btn secondary" href="../../index.html">← ARCADE</a>
+    <a class="menu-btn secondary" href="../../index.html#games">← ARCADE</a>
 </div>
 
 <script type="module">
@@ -615,7 +615,7 @@ canvas.addEventListener('touchstart', e => {
 /* ── Keyboard shortcuts ──────────────────────────── */
 document.addEventListener('keydown', e => {
     if (e.key === 'm' || e.key === 'M') toggleMute();
-    if (e.key === 'Escape') window.location.href = '../../index.html';
+    if (e.key === 'Escape') window.location.href = '../../index.html#games';
 });
 
 /* ── Buttons ─────────────────────────────────────── */

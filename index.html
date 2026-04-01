@@ -754,6 +754,13 @@ document.getElementById('playBtn').addEventListener('click', renderLeaderboard, 
 renderCards();
 initDifficulty();
 renderLeaderboard();
+
+// If returning from a game, skip directly to game selection screen
+if (location.hash === '#games') {
+    diffScreen.classList.add('exit');
+    gameScreen.classList.add('enter');
+    history.replaceState(null, '', location.pathname);
+}
 </script>
 </body>
 </html>
