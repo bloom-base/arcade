@@ -1,0 +1,1518 @@
+diff --git a/games/tower-defense/index.html b/games/tower-defense/index.html
+new file mode 100644
+index 0000000..2d3b175
+--- /dev/null
++++ b/games/tower-defense/index.html
+@@ -0,0 +1,1458 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++    <meta charset="UTF-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1.0">
++    <title>TOWER DEFENSE — arcade</title>
++    <link rel="preconnect" href="https://fonts.googleapis.com">
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
++    <style>
++        * { margin: 0; padding: 0; box-sizing: border-box; }
++
++        body {
++            background: #0a0a0a;
++            color: #fafafa;
++            min-height: 100vh;
++            display: flex;
++            flex-direction: column;
++            align-items: center;
++            justify-content: center;
++            font-family: 'Press Start 2P', monospace;
++            overflow: hidden;
++            user-select: none;
++        }
++
++        body::after {
++            content: '';
++            position: fixed;
++            inset: 0;
++            background: repeating-linear-gradient(
++                to bottom,
++                transparent 0, transparent 3px,
++                rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
++            );
++            pointer-events: none;
++            z-index: 100;
++        }
++
++        .back-btn {
++            position: fixed;
++            top: 1.25rem;
++            left: 1.25rem;
++            font-family: 'Press Start 2P', monospace;
++            font-size: 0.5rem;
++            color: #444;
++            background: transparent;
++            border: 1px solid #2a2a2a;
++            padding: 0.5rem 0.875rem;
++            cursor: pointer;
++            letter-spacing: 0.05em;
++            transition: color 0.15s, border-color 0.15s;
++            z-index: 50;
++            text-decoration: none;
++            display: inline-block;
++        }
++        .back-btn:hover { color: #fafafa; border-color: #555; }
++
++        .mute-btn {
++            position: fixed;
++            top: 1.25rem;
++            right: 1.25rem;
++            font-family: 'Press Start 2P', monospace;
++            font-size: 0.5rem;
++            color: #444;
++            background: transparent;
++            border: 1px solid #2a2a2a;
++            padding: 0.5rem 0.875rem;
++            cursor: pointer;
++            letter-spacing: 0.05em;
++            transition: color 0.15s, border-color 0.15s;
++            z-index: 50;
++        }
++        .mute-btn:hover { color: #fafafa; border-color: #555; }
++        .mute-btn.muted { color: #ef4444; border-color: #7f1d1d; }
++
++        #game-wrap {
++            display: flex;
++            flex-direction: column;
++            align-items: center;
++            gap: 0.5rem;
++        }
++
++        #title {
++            font-size: clamp(0.5rem, 2vw, 0.75rem);
++            letter-spacing: 0.3em;
++            color: #a855f7;
++            text-shadow: 0 0 24px rgba(168,85,247,0.6);
++            margin-bottom: 0.25rem;
++        }
++
++        canvas {
++            display: block;
++            image-rendering: pixelated;
++            border: 1px solid #1e1e1e;
++            cursor: crosshair;
++            max-width: 100vw;
++        }
++
++        #overlay {
++            position: fixed;
++            inset: 0;
++            background: rgba(0,0,0,0.88);
++            display: flex;
++            flex-direction: column;
++            align-items: center;
++            justify-content: center;
++            z-index: 200;
++            opacity: 0;
++            pointer-events: none;
++            transition: opacity 0.35s ease;
++            gap: 1.5rem;
++            padding: 1rem;
++        }
++        #overlay.show { opacity: 1; pointer-events: auto; }
++
++        .ov-title {
++            font-size: clamp(1rem, 4vw, 1.75rem);
++            letter-spacing: 0.15em;
++            text-align: center;
++        }
++        .ov-sub {
++            font-size: clamp(0.4rem, 1.5vw, 0.6rem);
++            color: #737373;
++            letter-spacing: 0.1em;
++            text-align: center;
++            line-height: 2;
++        }
++        .ov-score {
++            font-size: clamp(0.5rem, 2vw, 0.8rem);
++            color: #a855f7;
++            text-shadow: 0 0 16px rgba(168,85,247,0.5);
++            text-align: center;
++        }
++
++        .ov-btn {
++            font-family: 'Press Start 2P', monospace;
++            font-size: clamp(0.4rem, 1.5vw, 0.6rem);
++            color: #0a0a0a;
++            background: #a855f7;
++            border: none;
++            padding: 0.75rem 1.5rem;
++            cursor: pointer;
++            letter-spacing: 0.1em;
++            transition: background 0.15s, transform 0.1s;
++            box-shadow: 0 0 20px rgba(168,85,247,0.4);
++        }
++        .ov-btn:hover { background: #c084fc; transform: scale(1.04); }
++
++        .ov-hint {
++            font-size: clamp(0.3rem, 1vw, 0.45rem);
++            color: #3a3a3a;
++            letter-spacing: 0.08em;
++            text-align: center;
++            line-height: 2;
++        }
++    </style>
++</head>
++<body>
++    <a class="back-btn" href="../../index.html#games">← BACK</a>
++    <button class="mute-btn" id="muteBtn">♪ SFX</button>
++
++    <div id="game-wrap">
++        <div id="title">TOWER DEFENSE</div>
++        <canvas id="canvas"></canvas>
++    </div>
++
++    <div id="overlay" class="show">
++        <div class="ov-title" style="color:#a855f7;text-shadow:0 0 30px rgba(168,85,247,0.7)">TOWER DEFENSE</div>
++        <div class="ov-sub">
++            PLACE TOWERS TO STOP THE ENEMY HORDE<br>
++            CLICK A TOWER TYPE THEN CLICK THE MAP
++        </div>
++        <div class="ov-hint">
++            ARROW — FAST, MEDIUM DMG<br>
++            CANNON — SLOW, SPLASH DMG<br>
++            ICE — SLOWS ENEMIES<br>
++            LIGHTNING — CHAINS TO NEARBY FOES
++        </div>
++        <button class="ov-btn" id="startBtn">START GAME</button>
++    </div>
++
++    <script type="module">
++        import { saveScore, playHighScoreChime, showHighScoreBanner } from '../../utils/scores.js';
++
++        // ── Audio ─────────────────────────────────────────────
++        let muted = false;
++        let audioCtx = null;
++        function getAudio() {
++            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
++            return audioCtx;
++        }
++        function tone(freq, type, dur, vol = 0.15, delay = 0) {
++            if (muted) return;
++            try {
++                const ctx = getAudio();
++                const osc = ctx.createOscillator();
++                const gain = ctx.createGain();
++                osc.connect(gain);
++                gain.connect(ctx.destination);
++                osc.type = type;
++                osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
++                gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
++                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + dur);
++                osc.start(ctx.currentTime + delay);
++                osc.stop(ctx.currentTime + delay + dur + 0.01);
++            } catch (_) {}
++        }
++        const sfx = {
++            place:     () => { tone(440, 'square', 0.05, 0.12); tone(660, 'square', 0.05, 0.10, 0.05); },
++            shoot:     () => tone(880, 'square', 0.04, 0.06),
++            cannon:    () => { tone(120, 'sawtooth', 0.12, 0.18); tone(80, 'sawtooth', 0.10, 0.15, 0.06); },
++            ice:       () => tone(600, 'sine', 0.08, 0.10),
++            lightning: () => { tone(1200, 'sawtooth', 0.06, 0.12); tone(800, 'sawtooth', 0.05, 0.10, 0.03); },
++            kill:      () => tone(220, 'sawtooth', 0.07, 0.10),
++            wave:      () => { [330, 415, 523].forEach((f,i) => tone(f, 'square', 0.10, 0.14, i * 0.10)); },
++            loseLife:  () => { tone(180, 'sawtooth', 0.14, 0.20); tone(120, 'sawtooth', 0.12, 0.18, 0.10); },
++            gameOver:  () => { [200, 160, 120].forEach((f,i) => tone(f, 'sawtooth', 0.18, 0.22, i * 0.15)); },
++            win:       () => { [523, 659, 784, 1047].forEach((f,i) => tone(f, 'square', 0.14, 0.16, i * 0.12)); },
++            upgrade:   () => { tone(660, 'square', 0.06, 0.12); tone(880, 'square', 0.06, 0.10, 0.06); tone(1100, 'square', 0.08, 0.12, 0.12); },
++            noGold:    () => tone(160, 'sawtooth', 0.08, 0.12),
++        };
++
++        document.getElementById('muteBtn').addEventListener('click', () => {
++            muted = !muted;
++            const btn = document.getElementById('muteBtn');
++            btn.textContent = muted ? '✕ SFX' : '♪ SFX';
++            btn.classList.toggle('muted', muted);
++        });
++
++        // ── Canvas setup ──────────────────────────────────────
++        const canvas = document.getElementById('canvas');
++        const ctx = canvas.getContext('2d');
++
++        const CELL = 40;
++        const COLS = 16, ROWS = 12;
++        const GRID_W = COLS * CELL;   // 640
++        const GRID_H = ROWS * CELL;   // 480
++        const BAR_H = 44;             // top stats bar
++        const SIDE_W = 180;           // right sidebar
++        const CW = GRID_W + SIDE_W;   // 820
++        const CH = GRID_H + BAR_H;    // 524
++
++        canvas.width = CW;
++        canvas.height = CH;
++
++        // Scale canvas for smaller screens
++        function scaleCanvas() {
++            const maxW = Math.min(window.innerWidth - 20, 900);
++            const scale = Math.min(1, maxW / CW);
++            canvas.style.width  = Math.floor(CW * scale) + 'px';
++            canvas.style.height = Math.floor(CH * scale) + 'px';
++        }
++        scaleCanvas();
++        window.addEventListener('resize', scaleCanvas);
++
++        // ── Path definition ───────────────────────────────────
++        // Waypoints in grid-relative pixels (0,0 = top-left of grid)
++        const WAYPOINTS = [
++            [-20,  200],
++            [120,  200],
++            [120,  400],
++            [280,  400],
++            [280,   80],
++            [440,   80],
++            [440,  400],
++            [660,  400],
++        ];
++
++        // Pre-compute which grid cells are path cells (blocked for towers)
++        const pathCells = new Set();
++        function cellKey(c, r) { return c + ',' + r; }
++        function markPathCells() {
++            for (let i = 0; i < WAYPOINTS.length - 1; i++) {
++                const [x0, y0] = WAYPOINTS[i];
++                const [x1, y1] = WAYPOINTS[i + 1];
++                // Horizontal segment
++                if (y0 === y1) {
++                    const row = Math.floor(y0 / CELL);
++                    const c0 = Math.max(0, Math.floor(Math.min(x0, x1) / CELL));
++                    const c1 = Math.min(COLS - 1, Math.floor(Math.max(x0, x1) / CELL));
++                    for (let c = c0; c <= c1; c++) pathCells.add(cellKey(c, row));
++                } else {
++                    // Vertical segment
++                    const col = Math.floor(x0 / CELL);
++                    const r0 = Math.max(0, Math.floor(Math.min(y0, y1) / CELL));
++                    const r1 = Math.min(ROWS - 1, Math.floor(Math.max(y0, y1) / CELL));
++                    for (let r = r0; r <= r1; r++) pathCells.add(cellKey(col, r));
++                }
++            }
++        }
++        markPathCells();
++
++        // ── Tower definitions ─────────────────────────────────
++        const TOWER_DEFS = {
++            arrow: {
++                label: 'ARROW',
++                cost: 75,
++                color: '#22c55e',
++                glow: 'rgba(34,197,94,0.5)',
++                range: 120,
++                fireRate: 1.5,   // shots/sec
++                damage: 15,
++                projSpeed: 220,
++                projColor: '#86efac',
++                type: 'single',
++                upgrades: [
++                    { label: 'DMG+',  cost: 50,  apply: t => { t.damage += 10; } },
++                    { label: 'RANGE+',cost: 60,  apply: t => { t.range  += 30; } },
++                    { label: 'RATE+', cost: 70,  apply: t => { t.fireRate += 0.8; } },
++                ],
++            },
++            cannon: {
++                label: 'CANNON',
++                cost: 125,
++                color: '#f97316',
++                glow: 'rgba(249,115,22,0.5)',
++                range: 140,
++                fireRate: 0.5,
++                damage: 60,
++                projSpeed: 150,
++                projColor: '#fdba74',
++                type: 'splash',
++                splashRadius: 45,
++                upgrades: [
++                    { label: 'DMG+',    cost: 75,  apply: t => { t.damage += 35; } },
++                    { label: 'SPLASH+', cost: 80,  apply: t => { t.splashRadius += 20; } },
++                    { label: 'RATE+',   cost: 90,  apply: t => { t.fireRate += 0.3; } },
++                ],
++            },
++            ice: {
++                label: 'ICE',
++                cost: 100,
++                color: '#38bdf8',
++                glow: 'rgba(56,189,248,0.5)',
++                range: 110,
++                fireRate: 1.0,
++                damage: 8,
++                projSpeed: 180,
++                projColor: '#bae6fd',
++                type: 'slow',
++                slowFactor: 0.45,
++                slowDuration: 2.0,
++                upgrades: [
++                    { label: 'SLOW+',  cost: 60,  apply: t => { t.slowFactor -= 0.10; t.slowDuration += 0.5; } },
++                    { label: 'RANGE+', cost: 65,  apply: t => { t.range += 30; } },
++                    { label: 'RATE+',  cost: 70,  apply: t => { t.fireRate += 0.5; } },
++                ],
++            },
++            lightning: {
++                label: 'BOLT',
++                cost: 150,
++                color: '#a855f7',
++                glow: 'rgba(168,85,247,0.5)',
++                range: 130,
++                fireRate: 0.8,
++                damage: 28,
++                projSpeed: 999,
++                projColor: '#d8b4fe',
++                type: 'chain',
++                chainCount: 3,
++                chainRange: 90,
++                upgrades: [
++                    { label: 'DMG+',    cost: 80,  apply: t => { t.damage += 18; } },
++                    { label: 'CHAIN+',  cost: 90,  apply: t => { t.chainCount += 1; } },
++                    { label: 'RANGE+',  cost: 85,  apply: t => { t.range += 30; } },
++                ],
++            },
++        };
++
++        // ── Enemy definitions ─────────────────────────────────
++        const ENEMY_DEFS = {
++            basic:   { hp: 60,  speed: 62,  reward: 10, color: '#ef4444', size: 10 },
++            fast:    { hp: 40,  speed: 105, reward: 15, color: '#facc15', size: 8  },
++            tank:    { hp: 220, speed: 38,  reward: 30, color: '#94a3b8', size: 14 },
++            boss:    { hp: 700, speed: 28,  reward: 80, color: '#f43f5e', size: 18 },
++        };
++
++        // ── Wave definitions ──────────────────────────────────
++        function makeWave(n) {
++            const enemies = [];
++            const push = (type, count, gap = 1.1) => {
++                for (let i = 0; i < count; i++) {
++                    enemies.push({ type, delay: enemies.length * gap });
++                }
++            };
++            if (n === 1)  { push('basic', 10); }
++            else if (n === 2)  { push('basic', 15); }
++            else if (n === 3)  { push('basic', 10); push('fast', 6, 0.9); }
++            else if (n === 4)  { push('fast', 10, 0.9); push('basic', 8); }
++            else if (n === 5)  { push('tank', 4, 2.0); push('basic', 10); }
++            else if (n === 6)  { push('fast', 12, 0.8); push('tank', 5, 1.8); }
++            else if (n === 7)  { push('basic', 15); push('fast', 8, 0.8); push('tank', 4, 1.8); }
++            else if (n === 8)  { push('tank', 8, 1.6); push('fast', 10, 0.8); }
++            else if (n === 9)  { push('fast', 15, 0.7); push('tank', 6, 1.5); push('basic', 10); }
++            else if (n === 10) { push('boss', 1, 3); push('basic', 20); push('fast', 10, 0.8); }
++            else {
++                // Procedural after wave 10
++                const scale = n - 10;
++                push('basic', 10 + scale * 3);
++                push('fast', 5 + scale * 2, 0.8);
++                push('tank', 3 + scale, 1.5);
++                if (n % 5 === 0) push('boss', 1 + Math.floor(scale / 3), 2.5);
++            }
++            return enemies;
++        }
++        const TOTAL_WAVES = 15;
++
++        // ── Game state ────────────────────────────────────────
++        let state, towers, enemies, projectiles, particles, floats;
++        let gold, lives, wave, waveEnemies, waveSpawnTimer, waveSpawnIdx;
++        let waveCountdown, waveActive, waveComplete;
++        let selectedType, selectedTower;
++        let score, gamePhase; // 'playing' | 'over' | 'won'
++        let lastTime = 0;
++        let hoverCell = null;
++
++        function resetGame() {
++            towers     = [];
++            enemies    = [];
++            projectiles = [];
++            particles  = [];
++            floats     = [];
++            gold       = 150;
++            lives      = 20;
++            wave       = 0;
++            score      = 0;
++            waveActive = false;
++            waveComplete = false;
++            waveCountdown = 5;
++            selectedType = 'arrow';
++            selectedTower = null;
++            gamePhase  = 'playing';
++            waveEnemies = [];
++            waveSpawnIdx = 0;
++            waveSpawnTimer = 0;
++        }
++
++        // ── Tower factory ─────────────────────────────────────
++        function createTower(col, row, type) {
++            const def = TOWER_DEFS[type];
++            return {
++                col, row,
++                x: col * CELL + CELL / 2,
++                y: row * CELL + CELL / 2,
++                type,
++                label: def.label,
++                cost: def.cost,
++                color: def.color,
++                glow: def.glow,
++                range: def.range,
++                fireRate: def.fireRate,
++                damage: def.damage,
++                projSpeed: def.projSpeed,
++                projColor: def.projColor,
++                splashRadius: def.splashRadius || 0,
++                slowFactor: def.slowFactor || 0,
++                slowDuration: def.slowDuration || 0,
++                chainCount: def.chainCount || 0,
++                chainRange: def.chainRange || 0,
++                cooldown: 0,
++                upgradeLevel: 0,
++                target: null,
++                angle: 0,
++            };
++        }
++
++        // ── Enemy factory ─────────────────────────────────────
++        function createEnemy(type) {
++            const def = ENEMY_DEFS[type];
++            return {
++                type, color: def.color, size: def.size,
++                x: WAYPOINTS[0][0], y: WAYPOINTS[0][1],
++                hp: def.hp, maxHp: def.hp,
++                speed: def.speed, baseSpeed: def.speed,
++                reward: def.reward,
++                wpIdx: 1,
++                slowTimer: 0,
++                dead: false,
++            };
++        }
++
++        // ── Start wave ────────────────────────────────────────
++        function startWave() {
++            if (waveActive || wave >= TOTAL_WAVES) return;
++            wave++;
++            waveEnemies = makeWave(wave);
++            waveSpawnIdx = 0;
++            waveSpawnTimer = 0;
++            waveActive = true;
++            waveComplete = false;
++            sfx.wave();
++            // Bonus gold for early start
++            if (waveCountdown > 0) {
++                const bonus = Math.floor(waveCountdown) * 2;
++                gold += bonus;
++                addFloat(GRID_W / 2, BAR_H / 2, `+${bonus} EARLY!`, '#facc15');
++            }
++        }
++
++        // ── Projectile factory ────────────────────────────────
++        function createProjectile(tower, target) {
++            return {
++                x: tower.x, y: tower.y,
++                tx: target.x, ty: target.y,
++                target,
++                damage: tower.damage,
++                speed: tower.projSpeed,
++                color: tower.projColor,
++                type: tower.type,
++                splashRadius: tower.splashRadius,
++                slowFactor: tower.slowFactor,
++                slowDuration: tower.slowDuration,
++                chainCount: tower.chainCount,
++                chainRange: tower.chainRange,
++                done: false,
++            };
++        }
++
++        // ── Float text factory ────────────────────────────────
++        function addFloat(x, y, text, color) {
++            floats.push({ x, y, text, color, life: 1.0 });
++        }
++
++        // ── Particle factory ─────────────────────────────────
++        function addParticles(x, y, color, count = 6) {
++            for (let i = 0; i < count; i++) {
++                const angle = Math.random() * Math.PI * 2;
++                const spd = 30 + Math.random() * 60;
++                particles.push({
++                    x, y,
++                    vx: Math.cos(angle) * spd,
++                    vy: Math.sin(angle) * spd,
++                    life: 1.0,
++                    color,
++                    size: 2 + Math.random() * 3,
++                });
++            }
++        }
++
++        // ── Enemy movement ────────────────────────────────────
++        function moveEnemy(e, dt) {
++            if (e.slowTimer > 0) {
++                e.slowTimer -= dt;
++                e.speed = e.baseSpeed * (e.slowTimer > 0 ? e.slowFactor || e.baseSpeed : 1);
++            } else {
++                e.speed = e.baseSpeed;
++            }
++
++            const [tx, ty] = WAYPOINTS[e.wpIdx];
++            const dx = tx - e.x, dy = ty - e.y;
++            const dist = Math.hypot(dx, dy);
++            const move = e.speed * dt;
++
++            if (dist <= move) {
++                e.x = tx; e.y = ty;
++                e.wpIdx++;
++                if (e.wpIdx >= WAYPOINTS.length) {
++                    // Reached the end
++                    e.dead = true;
++                    lives = Math.max(0, lives - 1);
++                    sfx.loseLife();
++                    addFloat(GRID_W - 60, BAR_H / 2, '-1 LIFE', '#ef4444');
++                    if (lives <= 0) endGame(false);
++                }
++            } else {
++                e.x += (dx / dist) * move;
++                e.y += (dy / dist) * move;
++            }
++        }
++
++        // ── Tower targeting ───────────────────────────────────
++        function findTarget(tower) {
++            // "First" targeting: enemy furthest along the path
++            let best = null, bestProg = -1;
++            for (const e of enemies) {
++                if (e.dead) continue;
++                const gx = e.x, gy = e.y;
++                const dist = Math.hypot(gx - tower.x, gy - (tower.y));
++                if (dist > tower.range) continue;
++                const prog = e.wpIdx + (1 - Math.hypot(WAYPOINTS[e.wpIdx][0] - e.x, WAYPOINTS[e.wpIdx][1] - e.y) / 200);
++                if (prog > bestProg) { bestProg = prog; best = e; }
++            }
++            return best;
++        }
++
++        // ── Tower firing ──────────────────────────────────────
++        function fireTower(tower, dt) {
++            tower.cooldown -= dt;
++            if (tower.cooldown > 0) return;
++            const target = findTarget(tower);
++            if (!target) { tower.target = null; return; }
++            tower.target = target;
++            tower.angle = Math.atan2(target.y - tower.y, target.x - tower.x);
++            tower.cooldown = 1 / tower.fireRate;
++
++            if (tower.type === 'lightning') {
++                sfx.lightning();
++                // Instant chain damage
++                const hit = new Set([target]);
++                target.hp -= tower.damage;
++                addParticles(target.x, target.y + BAR_H, target.color);
++                let last = target;
++                for (let c = 1; c < tower.chainCount; c++) {
++                    let next = null, bestD = Infinity;
++                    for (const e of enemies) {
++                        if (e.dead || hit.has(e)) continue;
++                        const d = Math.hypot(e.x - last.x, e.y - last.y);
++                        if (d < tower.chainRange && d < bestD) { bestD = d; next = e; }
++                    }
++                    if (!next) break;
++                    hit.add(next);
++                    next.hp -= tower.damage * 0.7;
++                    addParticles(next.x, next.y + BAR_H, next.color);
++                    // Lightning bolt visual via projectile stub
++                    projectiles.push({
++                        x: last.x, y: last.y,
++                        tx: next.x, ty: next.y,
++                        target: null, done: true,
++                        visual: true, visualLife: 0.12,
++                        color: tower.projColor, type: 'lightning',
++                    });
++                    last = next;
++                }
++                // Connector from tower to first target
++                projectiles.push({
++                    x: tower.x, y: tower.y,
++                    tx: target.x, ty: target.y,
++                    target: null, done: true,
++                    visual: true, visualLife: 0.12,
++                    color: tower.projColor, type: 'lightning',
++                });
++                // Kill check
++                for (const e of hit) {
++                    if (e.hp <= 0) killEnemy(e);
++                }
++            } else {
++                const proj = createProjectile(tower, target);
++                projectiles.push(proj);
++                if (tower.type === 'cannon') sfx.cannon();
++                else if (tower.type === 'single') sfx.shoot();
++                else if (tower.type === 'slow') sfx.ice();
++                else sfx.shoot();
++            }
++        }
++
++        function killEnemy(e) {
++            if (e.dead) return;
++            e.dead = true;
++            gold += e.reward;
++            score += e.reward;
++            sfx.kill();
++            addParticles(e.x, e.y + BAR_H, e.color, 8);
++            addFloat(e.x, e.y + BAR_H, '+' + e.reward, '#facc15');
++        }
++
++        // ── Projectile movement ───────────────────────────────
++        function moveProjectile(p, dt) {
++            if (p.visual) {
++                p.visualLife -= dt;
++                if (p.visualLife <= 0) p.done = true;
++                return;
++            }
++            if (!p.target || p.target.dead) { p.done = true; return; }
++            p.tx = p.target.x; p.ty = p.target.y;
++            const dx = p.tx - p.x, dy = p.ty - p.y;
++            const dist = Math.hypot(dx, dy);
++            const move = p.speed * dt;
++            if (dist <= move) {
++                // Hit
++                if (p.type === 'splash') {
++                    for (const e of enemies) {
++                        if (e.dead) continue;
++                        const d = Math.hypot(e.x - p.tx, e.y - p.ty);
++                        if (d <= p.splashRadius) {
++                            e.hp -= p.damage * (1 - d / p.splashRadius * 0.5);
++                            if (e.hp <= 0) killEnemy(e);
++                        }
++                    }
++                    addParticles(p.tx, p.ty + BAR_H, '#fdba74', 12);
++                } else {
++                    p.target.hp -= p.damage;
++                    if (p.type === 'slow') {
++                        p.target.slowTimer = p.slowDuration;
++                        p.target.slowFactor = p.slowFactor;
++                    }
++                    if (p.target.hp <= 0) killEnemy(p.target);
++                    else addParticles(p.tx, p.ty + BAR_H, p.color, 3);
++                }
++                p.done = true;
++            } else {
++                p.x += (dx / dist) * move;
++                p.y += (dy / dist) * move;
++            }
++        }
++
++        // ── Game Over ─────────────────────────────────────────
++        function endGame(won) {
++            gamePhase = won ? 'won' : 'over';
++            const rank = saveScore('tower-defense', wave, 'normal');
++
++            const ol = document.getElementById('overlay');
++            ol.innerHTML = won
++                ? `<div class="ov-title" style="color:#22c55e;text-shadow:0 0 30px rgba(34,197,94,0.7)">YOU WIN!</div>
++                   <div class="ov-score">WAVE ${wave} CLEARED</div>
++                   <div class="ov-score" style="color:#facc15">GOLD EARNED: ${score}</div>
++                   <button class="ov-btn" id="restartBtn" style="background:#22c55e">PLAY AGAIN</button>`
++                : `<div class="ov-title" style="color:#ef4444;text-shadow:0 0 30px rgba(239,68,68,0.7)">GAME OVER</div>
++                   <div class="ov-score">REACHED WAVE ${wave}</div>
++                   <div class="ov-score" style="color:#facc15">GOLD EARNED: ${score}</div>
++                   <button class="ov-btn" id="restartBtn" style="background:#a855f7">TRY AGAIN</button>`;
++            ol.classList.add('show');
++
++            document.getElementById('restartBtn').addEventListener('click', () => {
++                ol.classList.remove('show');
++                resetGame();
++            });
++
++            if (rank > 0) setTimeout(() => { showHighScoreBanner(rank); playHighScoreChime(muted); }, 600);
++            won ? sfx.win() : sfx.gameOver();
++        }
++
++        // ── Tower placement ───────────────────────────────────
++        function tryPlaceTower(px, py) {
++            // Convert canvas coords to grid coords
++            const gx = px, gy = py - BAR_H;
++            if (gx < 0 || gx >= GRID_W || gy < 0 || gy >= GRID_H) return;
++            const col = Math.floor(gx / CELL);
++            const row = Math.floor(gy / CELL);
++
++            if (pathCells.has(cellKey(col, row))) return;
++            if (towers.find(t => t.col === col && t.row === row)) return;
++
++            const def = TOWER_DEFS[selectedType];
++            if (gold < def.cost) { sfx.noGold(); addFloat(px, py, 'NO GOLD!', '#ef4444'); return; }
++
++            gold -= def.cost;
++            const t = createTower(col, row, selectedType);
++            towers.push(t);
++            selectedTower = t;
++            sfx.place();
++        }
++
++        function trySelectTower(px, py) {
++            const gx = px, gy = py - BAR_H;
++            if (gx < 0 || gx >= GRID_W || gy < 0 || gy >= GRID_H) return false;
++            const col = Math.floor(gx / CELL);
++            const row = Math.floor(gy / CELL);
++            const t = towers.find(t => t.col === col && t.row === row);
++            if (t) { selectedTower = t; return true; }
++            return false;
++        }
++
++        // ── Sidebar click handling ────────────────────────────
++        const SIDEBAR_X = GRID_W;
++        const TOWER_TYPES = Object.keys(TOWER_DEFS);
++
++        function handleSidebarClick(px, py) {
++            if (px < SIDEBAR_X || px >= CW) return;
++            const rx = px - SIDEBAR_X;
++            const ry = py - BAR_H;
++
++            // Tower type buttons (top of sidebar)
++            const btnH = 52, btnY0 = 8;
++            for (let i = 0; i < TOWER_TYPES.length; i++) {
++                const by = btnY0 + i * (btnH + 6);
++                if (ry >= by && ry < by + btnH) {
++                    selectedType = TOWER_TYPES[i];
++                    selectedTower = null;
++                    return;
++                }
++            }
++
++            // Wave button
++            const waveY = btnY0 + TOWER_TYPES.length * (btnH + 6) + 16;
++            if (ry >= waveY && ry < waveY + 38 && !waveActive) {
++                startWave();
++                return;
++            }
++
++            // Upgrade buttons (when tower selected)
++            if (selectedTower) {
++                const upgY0 = waveY + 56;
++                const def = TOWER_DEFS[selectedTower.type];
++                for (let i = 0; i < 3; i++) {
++                    const uy = upgY0 + i * 38;
++                    if (ry >= uy && ry < uy + 32) {
++                        const upg = def.upgrades[i];
++                        if (selectedTower.upgradeLevel > i) {
++                            // Already bought this tier
++                        } else if (selectedTower.upgradeLevel === i) {
++                            if (gold >= upg.cost) {
++                                gold -= upg.cost;
++                                upg.apply(selectedTower);
++                                selectedTower.upgradeLevel++;
++                                sfx.upgrade();
++                                addFloat(selectedTower.x, selectedTower.y + BAR_H, 'UPGRADED!', '#a855f7');
++                            } else {
++                                sfx.noGold();
++                                addFloat(selectedTower.x, selectedTower.y + BAR_H, 'NO GOLD!', '#ef4444');
++                            }
++                        }
++                        return;
++                    }
++                }
++            }
++        }
++
++        // ── Canvas click ──────────────────────────────────────
++        function getCanvasPos(evt) {
++            const rect = canvas.getBoundingClientRect();
++            const scaleX = CW / rect.width;
++            const scaleY = CH / rect.height;
++            let cx, cy;
++            if (evt.touches) {
++                cx = (evt.touches[0].clientX - rect.left) * scaleX;
++                cy = (evt.touches[0].clientY - rect.top)  * scaleY;
++            } else {
++                cx = (evt.clientX - rect.left) * scaleX;
++                cy = (evt.clientY - rect.top)  * scaleY;
++            }
++            return [cx, cy];
++        }
++
++        canvas.addEventListener('click', evt => {
++            if (gamePhase !== 'playing') return;
++            const [px, py] = getCanvasPos(evt);
++            if (px >= SIDEBAR_X) {
++                handleSidebarClick(px, py);
++            } else {
++                if (!trySelectTower(px, py)) {
++                    tryPlaceTower(px, py);
++                }
++            }
++        });
++
++        canvas.addEventListener('mousemove', evt => {
++            const [px, py] = getCanvasPos(evt);
++            const gx = px, gy = py - BAR_H;
++            if (gx >= 0 && gx < GRID_W && gy >= 0 && gy < GRID_H) {
++                hoverCell = [Math.floor(gx / CELL), Math.floor(gy / CELL)];
++            } else {
++                hoverCell = null;
++            }
++        });
++
++        canvas.addEventListener('mouseleave', () => { hoverCell = null; });
++        canvas.addEventListener('touchstart', evt => {
++            evt.preventDefault();
++            if (gamePhase !== 'playing') return;
++            const [px, py] = getCanvasPos(evt);
++            if (px >= SIDEBAR_X) handleSidebarClick(px, py);
++            else if (!trySelectTower(px, py)) tryPlaceTower(px, py);
++        }, { passive: false });
++
++        document.addEventListener('keydown', evt => {
++            if (evt.code === 'Enter' || evt.code === 'Space') {
++                evt.preventDefault();
++                if (!waveActive && gamePhase === 'playing') startWave();
++            }
++            if (evt.code === 'Digit1') selectedType = 'arrow';
++            if (evt.code === 'Digit2') selectedType = 'cannon';
++            if (evt.code === 'Digit3') selectedType = 'ice';
++            if (evt.code === 'Digit4') selectedType = 'lightning';
++            if (evt.code === 'Escape') { selectedTower = null; }
++        });
++
++        // ── Update ────────────────────────────────────────────
++        function update(dt) {
++            if (gamePhase !== 'playing') return;
++
++            // Wave countdown
++            if (!waveActive) {
++                waveCountdown -= dt;
++                if (waveCountdown <= 0) {
++                    if (wave < TOTAL_WAVES) startWave();
++                    else { endGame(true); return; }
++                }
++            }
++
++            // Spawn enemies
++            if (waveActive && waveSpawnIdx < waveEnemies.length) {
++                waveSpawnTimer += dt;
++                while (waveSpawnIdx < waveEnemies.length &&
++                       waveSpawnTimer >= waveEnemies[waveSpawnIdx].delay) {
++                    enemies.push(createEnemy(waveEnemies[waveSpawnIdx].type));
++                    waveSpawnIdx++;
++                }
++            }
++
++            // Move enemies
++            for (const e of enemies) {
++                if (!e.dead) moveEnemy(e, dt);
++            }
++
++            // Tower logic
++            for (const t of towers) fireTower(t, dt);
++
++            // Move projectiles
++            for (const p of projectiles) moveProjectile(p, dt);
++
++            // Check wave complete
++            if (waveActive && waveSpawnIdx >= waveEnemies.length && enemies.every(e => e.dead)) {
++                waveActive = false;
++                waveComplete = true;
++                waveCountdown = 6;
++                // Wave clear bonus
++                const bonus = 20 + wave * 5;
++                gold += bonus;
++                score += bonus;
++                addFloat(GRID_W / 2, BAR_H / 2, `WAVE ${wave} CLEAR! +${bonus}`, '#22c55e');
++                if (wave >= TOTAL_WAVES) { setTimeout(() => endGame(true), 1200); }
++            }
++
++            // Particles
++            for (const p of particles) {
++                p.x += p.vx * dt;
++                p.y += p.vy * dt;
++                p.vy += 80 * dt;
++                p.life -= dt * 1.5;
++            }
++
++            // Floats
++            for (const f of floats) {
++                f.y -= 30 * dt;
++                f.life -= dt;
++            }
++
++            // Cleanup
++            enemies     = enemies.filter(e => !e.dead || e.wpIdx < WAYPOINTS.length);
++            projectiles = projectiles.filter(p => !p.done);
++            particles   = particles.filter(p => p.life > 0);
++            floats      = floats.filter(f => f.life > 0);
++        }
++
++        // ── Draw helpers ──────────────────────────────────────
++        function roundRect(x, y, w, h, r) {
++            ctx.beginPath();
++            ctx.moveTo(x + r, y);
++            ctx.lineTo(x + w - r, y);
++            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
++            ctx.lineTo(x + w, y + h - r);
++            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
++            ctx.lineTo(x + r, y + h);
++            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
++            ctx.lineTo(x, y + r);
++            ctx.quadraticCurveTo(x, y, x + r, y);
++            ctx.closePath();
++        }
++
++        function drawPixelFont(text, x, y, size, color, align = 'left') {
++            ctx.font = `${size}px "Press Start 2P"`;
++            ctx.fillStyle = color;
++            ctx.textAlign = align;
++            ctx.textBaseline = 'middle';
++            ctx.fillText(text, x, y);
++        }
++
++        // ── Draw path ─────────────────────────────────────────
++        function drawPath() {
++            // Path background
++            ctx.strokeStyle = '#1e293b';
++            ctx.lineWidth = CELL;
++            ctx.lineCap = 'round';
++            ctx.lineJoin = 'round';
++            ctx.beginPath();
++            ctx.moveTo(WAYPOINTS[0][0], WAYPOINTS[0][1] + BAR_H);
++            for (let i = 1; i < WAYPOINTS.length; i++) {
++                ctx.lineTo(WAYPOINTS[i][0], WAYPOINTS[i][1] + BAR_H);
++            }
++            ctx.stroke();
++
++            // Path center line (dashed)
++            ctx.strokeStyle = '#334155';
++            ctx.lineWidth = 2;
++            ctx.setLineDash([8, 12]);
++            ctx.beginPath();
++            ctx.moveTo(WAYPOINTS[0][0], WAYPOINTS[0][1] + BAR_H);
++            for (let i = 1; i < WAYPOINTS.length; i++) {
++                ctx.lineTo(WAYPOINTS[i][0], WAYPOINTS[i][1] + BAR_H);
++            }
++            ctx.stroke();
++            ctx.setLineDash([]);
++
++            // Entry/exit arrows
++            ctx.fillStyle = '#22c55e';
++            ctx.font = '11px "Press Start 2P"';
++            ctx.textAlign = 'left';
++            ctx.textBaseline = 'middle';
++            ctx.fillText('IN', 4, WAYPOINTS[0][1] + BAR_H);
++            ctx.fillStyle = '#ef4444';
++            ctx.textAlign = 'right';
++            ctx.fillText('OUT', GRID_W - 4, WAYPOINTS[WAYPOINTS.length - 1][1] + BAR_H);
++        }
++
++        // ── Draw grid ─────────────────────────────────────────
++        function drawGrid() {
++            ctx.fillStyle = '#0f172a';
++            ctx.fillRect(0, BAR_H, GRID_W, GRID_H);
++
++            // Grid lines
++            ctx.strokeStyle = '#1e293b';
++            ctx.lineWidth = 0.5;
++            for (let c = 0; c <= COLS; c++) {
++                ctx.beginPath();
++                ctx.moveTo(c * CELL, BAR_H);
++                ctx.lineTo(c * CELL, BAR_H + GRID_H);
++                ctx.stroke();
++            }
++            for (let r = 0; r <= ROWS; r++) {
++                ctx.beginPath();
++                ctx.moveTo(0, BAR_H + r * CELL);
++                ctx.lineTo(GRID_W, BAR_H + r * CELL);
++                ctx.stroke();
++            }
++
++            // Hover highlight
++            if (hoverCell && gamePhase === 'playing') {
++                const [hc, hr] = hoverCell;
++                const isPath = pathCells.has(cellKey(hc, hr));
++                const hasTower = towers.some(t => t.col === hc && t.row === hr);
++                if (!isPath && !hasTower) {
++                    const def = TOWER_DEFS[selectedType];
++                    ctx.fillStyle = 'rgba(168,85,247,0.15)';
++                    ctx.fillRect(hc * CELL + 1, BAR_H + hr * CELL + 1, CELL - 2, CELL - 2);
++                    // Range preview
++                    ctx.beginPath();
++                    ctx.arc(hc * CELL + CELL / 2, BAR_H + hr * CELL + CELL / 2, def.range, 0, Math.PI * 2);
++                    ctx.strokeStyle = 'rgba(168,85,247,0.25)';
++                    ctx.lineWidth = 1;
++                    ctx.stroke();
++                }
++            }
++        }
++
++        // ── Draw towers ───────────────────────────────────────
++        function drawTowers() {
++            for (const t of towers) {
++                const px = t.col * CELL + CELL / 2;
++                const py = BAR_H + t.row * CELL + CELL / 2;
++                const isSelected = t === selectedTower;
++
++                // Range circle when selected
++                if (isSelected) {
++                    ctx.beginPath();
++                    ctx.arc(px, py, t.range, 0, Math.PI * 2);
++                    ctx.strokeStyle = t.color + '55';
++                    ctx.lineWidth = 1;
++                    ctx.stroke();
++                    ctx.fillStyle = t.color + '11';
++                    ctx.fill();
++                }
++
++                // Tower base
++                const pad = 4;
++                ctx.fillStyle = isSelected ? '#1e293b' : '#0f172a';
++                ctx.strokeStyle = t.color;
++                ctx.lineWidth = isSelected ? 2 : 1.5;
++                roundRect(t.col * CELL + pad, BAR_H + t.row * CELL + pad, CELL - pad * 2, CELL - pad * 2, 4);
++                ctx.fill();
++                ctx.stroke();
++
++                // Glow
++                if (isSelected) {
++                    ctx.shadowColor = t.color;
++                    ctx.shadowBlur = 8;
++                }
++
++                // Tower icon by type
++                ctx.save();
++                ctx.translate(px, py);
++                ctx.rotate(t.angle);
++                ctx.fillStyle = t.color;
++
++                if (t.type === 'arrow') {
++                    // Arrow head
++                    ctx.beginPath();
++                    ctx.moveTo(10, 0); ctx.lineTo(-4, -5); ctx.lineTo(-2, 0); ctx.lineTo(-4, 5);
++                    ctx.closePath(); ctx.fill();
++                } else if (t.type === 'cannon') {
++                    // Cannon barrel
++                    ctx.fillRect(-5, -4, 14, 8);
++                    ctx.beginPath();
++                    ctx.arc(0, 0, 6, 0, Math.PI * 2);
++                    ctx.fillStyle = '#1e293b'; ctx.fill();
++                    ctx.strokeStyle = t.color; ctx.lineWidth = 2; ctx.stroke();
++                } else if (t.type === 'slow') {
++                    // Snowflake
++                    ctx.rotate(-t.angle);
++                    for (let i = 0; i < 6; i++) {
++                        ctx.save(); ctx.rotate(i * Math.PI / 3);
++                        ctx.fillRect(-1, -10, 2, 20);
++                        ctx.restore();
++                    }
++                } else if (t.type === 'chain') {
++                    // Lightning bolt
++                    ctx.rotate(-t.angle);
++                    ctx.beginPath();
++                    ctx.moveTo(2, -10); ctx.lineTo(-3, 0); ctx.lineTo(3, 0); ctx.lineTo(-2, 10);
++                    ctx.strokeStyle = t.color; ctx.lineWidth = 3; ctx.stroke();
++                }
++                ctx.restore();
++                ctx.shadowBlur = 0;
++
++                // Upgrade pips
++                for (let i = 0; i < t.upgradeLevel; i++) {
++                    ctx.fillStyle = '#facc15';
++                    ctx.fillRect(t.col * CELL + 5 + i * 7, BAR_H + t.row * CELL + 2, 5, 3);
++                }
++            }
++        }
++
++        // ── Draw enemies ──────────────────────────────────────
++        function drawEnemies() {
++            for (const e of enemies) {
++                if (e.dead) continue;
++                const ex = e.x, ey = e.y + BAR_H;
++
++                // Slow tint
++                if (e.slowTimer > 0) {
++                    ctx.beginPath();
++                    ctx.arc(ex, ey, e.size + 4, 0, Math.PI * 2);
++                    ctx.fillStyle = 'rgba(56,189,248,0.2)';
++                    ctx.fill();
++                }
++
++                // Enemy body
++                ctx.beginPath();
++                ctx.arc(ex, ey, e.size, 0, Math.PI * 2);
++                ctx.fillStyle = e.color;
++                ctx.fill();
++                ctx.strokeStyle = '#fff2';
++                ctx.lineWidth = 1;
++                ctx.stroke();
++
++                // Direction indicator
++                if (e.wpIdx < WAYPOINTS.length) {
++                    const [tx, ty] = WAYPOINTS[e.wpIdx];
++                    const ang = Math.atan2(ty - e.y, tx - e.x);
++                    ctx.beginPath();
++                    ctx.moveTo(ex + Math.cos(ang) * e.size, ey + Math.sin(ang) * e.size);
++                    ctx.lineTo(
++                        ex + Math.cos(ang) * (e.size + 5),
++                        ey + Math.sin(ang) * (e.size + 5)
++                    );
++                    ctx.strokeStyle = '#fff6';
++                    ctx.lineWidth = 2;
++                    ctx.stroke();
++                }
++
++                // HP bar
++                const barW = e.size * 2.5, barH = 3;
++                const bx = ex - barW / 2, by = ey - e.size - 6;
++                ctx.fillStyle = '#1f2937';
++                ctx.fillRect(bx, by, barW, barH);
++                const pct = Math.max(0, e.hp / e.maxHp);
++                ctx.fillStyle = pct > 0.5 ? '#22c55e' : pct > 0.25 ? '#facc15' : '#ef4444';
++                ctx.fillRect(bx, by, barW * pct, barH);
++            }
++        }
++
++        // ── Draw projectiles ──────────────────────────────────
++        function drawProjectiles() {
++            for (const p of projectiles) {
++                if (p.visual) {
++                    // Lightning bolt visual
++                    ctx.beginPath();
++                    ctx.moveTo(p.x, p.y + BAR_H);
++                    ctx.lineTo(p.tx, p.ty + BAR_H);
++                    ctx.strokeStyle = p.color;
++                    ctx.lineWidth = 2;
++                    ctx.shadowColor = p.color;
++                    ctx.shadowBlur = 6;
++                    ctx.stroke();
++                    ctx.shadowBlur = 0;
++                    continue;
++                }
++                const py = p.y + BAR_H;
++                const pty = p.ty + BAR_H;
++
++                if (p.type === 'splash') {
++                    ctx.beginPath();
++                    ctx.arc(p.x, py, 5, 0, Math.PI * 2);
++                    ctx.fillStyle = p.color;
++                    ctx.shadowColor = p.color;
++                    ctx.shadowBlur = 8;
++                    ctx.fill();
++                    ctx.shadowBlur = 0;
++                } else {
++                    ctx.beginPath();
++                    ctx.arc(p.x, py, 3, 0, Math.PI * 2);
++                    ctx.fillStyle = p.color;
++                    ctx.shadowColor = p.color;
++                    ctx.shadowBlur = 5;
++                    ctx.fill();
++                    ctx.shadowBlur = 0;
++                }
++            }
++        }
++
++        // ── Draw particles ────────────────────────────────────
++        function drawParticles() {
++            for (const p of particles) {
++                ctx.beginPath();
++                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
++                ctx.fillStyle = p.color + Math.floor(p.life * 255).toString(16).padStart(2, '0');
++                ctx.fill();
++            }
++        }
++
++        // ── Draw floats ───────────────────────────────────────
++        function drawFloats() {
++            for (const f of floats) {
++                ctx.font = '7px "Press Start 2P"';
++                ctx.textAlign = 'center';
++                ctx.textBaseline = 'middle';
++                ctx.globalAlpha = Math.min(1, f.life * 2);
++                ctx.fillStyle = f.color;
++                ctx.shadowColor = f.color;
++                ctx.shadowBlur = 4;
++                ctx.fillText(f.text, f.x, f.y);
++            }
++            ctx.globalAlpha = 1;
++            ctx.shadowBlur = 0;
++        }
++
++        // ── Draw top bar ──────────────────────────────────────
++        function drawTopBar() {
++            ctx.fillStyle = '#020617';
++            ctx.fillRect(0, 0, CW, BAR_H);
++            ctx.strokeStyle = '#1e293b';
++            ctx.lineWidth = 1;
++            ctx.beginPath(); ctx.moveTo(0, BAR_H); ctx.lineTo(CW, BAR_H); ctx.stroke();
++
++            const items = [
++                { label: '♥', value: lives,       color: '#ef4444', x: 12  },
++                { label: '$', value: gold,         color: '#facc15', x: 130 },
++                { label: '≋', value: `${wave}/${TOTAL_WAVES}`, color: '#a855f7', x: 280 },
++                { label: '★', value: score,        color: '#38bdf8', x: 430 },
++            ];
++
++            for (const it of items) {
++                ctx.font = '8px "Press Start 2P"';
++                ctx.textAlign = 'left';
++                ctx.textBaseline = 'middle';
++                ctx.fillStyle = it.color;
++                ctx.shadowColor = it.color;
++                ctx.shadowBlur = 6;
++                ctx.fillText(it.label, it.x, BAR_H / 2);
++                ctx.shadowBlur = 0;
++                ctx.fillStyle = '#e2e8f0';
++                ctx.font = '8px "Press Start 2P"';
++                ctx.fillText(String(it.value), it.x + 14, BAR_H / 2);
++            }
++
++            // Wave countdown or status
++            if (!waveActive && gamePhase === 'playing' && wave < TOTAL_WAVES) {
++                const cd = Math.ceil(waveCountdown);
++                ctx.font = '7px "Press Start 2P"';
++                ctx.textAlign = 'right';
++                ctx.fillStyle = '#64748b';
++                ctx.fillText(`NEXT WAVE IN ${cd}s  [SPACE]`, CW - SIDE_W - 10, BAR_H / 2);
++            } else if (waveActive) {
++                const rem = waveEnemies.length - waveSpawnIdx + enemies.filter(e => !e.dead).length;
++                ctx.font = '7px "Press Start 2P"';
++                ctx.textAlign = 'right';
++                ctx.fillStyle = '#ef4444';
++                ctx.shadowColor = '#ef4444';
++                ctx.shadowBlur = 4;
++                ctx.fillText(`WAVE ${wave}  ×${rem}`, CW - SIDE_W - 10, BAR_H / 2);
++                ctx.shadowBlur = 0;
++            }
++        }
++
++        // ── Draw sidebar ──────────────────────────────────────
++        function drawSidebar() {
++            const sx = SIDEBAR_X;
++            ctx.fillStyle = '#020617';
++            ctx.fillRect(sx, 0, SIDE_W, CH);
++            ctx.strokeStyle = '#1e293b';
++            ctx.lineWidth = 1;
++            ctx.beginPath(); ctx.moveTo(sx, BAR_H); ctx.lineTo(sx, CH); ctx.stroke();
++
++            const btnH = 52, btnY0 = BAR_H + 8;
++            const pad = 6;
++
++            for (let i = 0; i < TOWER_TYPES.length; i++) {
++                const type = TOWER_TYPES[i];
++                const def = TOWER_DEFS[type];
++                const by = btnY0 + i * (btnH + 6);
++                const isSelected = type === selectedType;
++
++                // Button bg
++                roundRect(sx + pad, by, SIDE_W - pad * 2, btnH, 4);
++                ctx.fillStyle = isSelected ? def.color + '22' : '#0f172a';
++                ctx.fill();
++                ctx.strokeStyle = isSelected ? def.color : '#1e293b';
++                ctx.lineWidth = isSelected ? 2 : 1;
++                ctx.stroke();
++
++                // Key hint
++                ctx.font = '6px "Press Start 2P"';
++                ctx.textAlign = 'left';
++                ctx.textBaseline = 'top';
++                ctx.fillStyle = '#475569';
++                ctx.fillText(`[${i + 1}]`, sx + pad + 4, by + 4);
++
++                // Tower name
++                ctx.font = '7px "Press Start 2P"';
++                ctx.textAlign = 'left';
++                ctx.textBaseline = 'middle';
++                ctx.fillStyle = isSelected ? def.color : '#94a3b8';
++                if (isSelected) { ctx.shadowColor = def.color; ctx.shadowBlur = 6; }
++                ctx.fillText(def.label, sx + pad + 6, by + 20);
++                ctx.shadowBlur = 0;
++
++                // Cost
++                ctx.font = '6px "Press Start 2P"';
++                ctx.fillStyle = gold >= def.cost ? '#facc15' : '#ef4444';
++                ctx.fillText(`$${def.cost}`, sx + pad + 6, by + 36);
++
++                // Range/stats mini
++                ctx.textAlign = 'right';
++                ctx.fillStyle = '#334155';
++                ctx.fillText(`R:${def.range}`, sx + SIDE_W - pad - 4, by + 20);
++                ctx.fillText(`D:${def.damage}`, sx + SIDE_W - pad - 4, by + 36);
++            }
++
++            // Wave button
++            const waveY = btnY0 + TOWER_TYPES.length * (btnH + 6) + 16;
++            if (!waveActive && gamePhase === 'playing' && wave < TOTAL_WAVES) {
++                roundRect(sx + pad, waveY, SIDE_W - pad * 2, 38, 4);
++                ctx.fillStyle = '#14532d';
++                ctx.fill();
++                ctx.strokeStyle = '#22c55e';
++                ctx.lineWidth = 1.5;
++                ctx.stroke();
++                ctx.font = '7px "Press Start 2P"';
++                ctx.textAlign = 'center';
++                ctx.textBaseline = 'middle';
++                ctx.fillStyle = '#22c55e';
++                ctx.shadowColor = '#22c55e';
++                ctx.shadowBlur = 4;
++                ctx.fillText(`WAVE ${wave + 1}`, sx + SIDE_W / 2, waveY + 13);
++                ctx.shadowBlur = 0;
++                ctx.font = '5px "Press Start 2P"';
++                ctx.fillStyle = '#4ade80';
++                ctx.fillText('SEND EARLY', sx + SIDE_W / 2, waveY + 28);
++            } else if (waveActive) {
++                roundRect(sx + pad, waveY, SIDE_W - pad * 2, 38, 4);
++                ctx.fillStyle = '#1a0a0a';
++                ctx.fill();
++                ctx.strokeStyle = '#7f1d1d';
++                ctx.lineWidth = 1;
++                ctx.stroke();
++                ctx.font = '6px "Press Start 2P"';
++                ctx.textAlign = 'center';
++                ctx.textBaseline = 'middle';
++                ctx.fillStyle = '#ef4444';
++                ctx.fillText('WAVE ACTIVE', sx + SIDE_W / 2, waveY + 19);
++            }
++
++            // Selected tower info & upgrades
++            const upgY0 = waveY + 56;
++            if (selectedTower) {
++                const t = selectedTower;
++                const def = TOWER_DEFS[t.type];
++
++                ctx.font = '6px "Press Start 2P"';
++                ctx.textAlign = 'center';
++                ctx.textBaseline = 'middle';
++                ctx.fillStyle = t.color;
++                ctx.shadowColor = t.color; ctx.shadowBlur = 4;
++                ctx.fillText(t.label + ' LV' + (t.upgradeLevel + 1), sx + SIDE_W / 2, upgY0 - 8);
++                ctx.shadowBlur = 0;
++
++                for (let i = 0; i < 3; i++) {
++                    const upg = def.upgrades[i];
++                    const uy = upgY0 + i * 38;
++                    const bought = t.upgradeLevel > i;
++                    const available = t.upgradeLevel === i;
++
++                    roundRect(sx + pad, uy, SIDE_W - pad * 2, 32, 3);
++                    ctx.fillStyle = bought ? '#1e293b' : available ? '#0f172a' : '#050a14';
++                    ctx.fill();
++                    ctx.strokeStyle = bought ? '#22c55e' : available ? '#a855f7' : '#1e293b';
++                    ctx.lineWidth = 1;
++                    ctx.stroke();
++
++                    ctx.font = '6px "Press Start 2P"';
++                    ctx.textAlign = 'left';
++                    ctx.textBaseline = 'middle';
++                    ctx.fillStyle = bought ? '#22c55e' : available ? '#c084fc' : '#334155';
++                    ctx.fillText(bought ? '✓ ' + upg.label : upg.label, sx + pad + 5, uy + 11);
++
++                    if (!bought) {
++                        ctx.textAlign = 'right';
++                        ctx.fillStyle = available && gold >= upg.cost ? '#facc15' : '#4b5563';
++                        ctx.fillText('$' + upg.cost, sx + SIDE_W - pad - 5, uy + 11);
++                    }
++
++                    ctx.font = '5px "Press Start 2P"';
++                    ctx.textAlign = 'left';
++                    ctx.textBaseline = 'middle';
++                    ctx.fillStyle = '#475569';
++                    ctx.fillText(available ? 'CLICK TO BUY' : (bought ? 'MAXED' : 'LOCKED'), sx + pad + 5, uy + 24);
++                }
++
++                // Sell hint
++                ctx.font = '5px "Press Start 2P"';
++                ctx.textAlign = 'center';
++                ctx.fillStyle = '#334155';
++                ctx.fillText('[ESC] DESELECT', sx + SIDE_W / 2, upgY0 + 3 * 38 + 12);
++            } else {
++                ctx.font = '5px "Press Start 2P"';
++                ctx.textAlign = 'center';
++                ctx.textBaseline = 'middle';
++                ctx.fillStyle = '#1e293b';
++                ctx.fillText('CLICK TOWER', sx + SIDE_W / 2, upgY0 + 10);
++                ctx.fillText('TO UPGRADE', sx + SIDE_W / 2, upgY0 + 24);
++            }
++        }
++
++        // ── Main draw ─────────────────────────────────────────
++        function draw() {
++            ctx.clearRect(0, 0, CW, CH);
++            drawGrid();
++            drawPath();
++            drawTowers();
++            drawEnemies();
++            drawProjectiles();
++            drawParticles();
++            drawFloats();
++            drawTopBar();
++            drawSidebar();
++        }
++
++        // ── Game loop ─────────────────────────────────────────
++        function loop(ts) {
++            const dt = Math.min((ts - lastTime) / 1000, 0.05);
++            lastTime = ts;
++            update(dt);
++            draw();
++            requestAnimationFrame(loop);
++        }
++
++        // ── Start ─────────────────────────────────────────────
++        document.getElementById('startBtn').addEventListener('click', () => {
++            document.getElementById('overlay').classList.remove('show');
++            resetGame();
++            requestAnimationFrame(ts => { lastTime = ts; loop(ts); });
++        });
++
++        // Initial draw (static)
++        resetGame();
++        draw();
++    </script>
++</body>
++</html>
+diff --git a/index.html b/index.html
+index 0c1523d..b32545a 100644
+--- a/index.html
++++ b/index.html
+@@ -631,6 +631,34 @@ const flappyPixels = [
+ ];
+ 
+ /* ── Game definitions ──────────────────────────────────── */
++// Tower Defense — winding path with towers and enemies
++const TD = '#a855f7', TG = '#22c55e', TR = '#ef4444', TY = '#facc15', TB = '#38bdf8';
++const towerDefPixels = [
++    // Path background (dark blue)
++    ...[3,4,5,6,7,8,9].map(c => [4, c, '#1e293b']),
++    ...[5,6,7].map(r => [r, 4, '#1e293b']),
++    ...[5,6,7].map(r => [r, 9, '#1e293b']),
++    ...[8,9,10,11,12].map(c => [7, c, '#1e293b']),
++    // Path arrows (lighter)
++    [4,6,'#334155'],[4,7,'#334155'],[4,8,'#334155'],
++    [6,4,'#334155'],[6,9,'#334155'],
++    [7,10,'#334155'],[7,11,'#334155'],
++    // Arrow tower (green)
++    [2,2,TG],[3,2,TG],[2,1,'#86efac'],
++    // Cannon tower (orange)
++    [2,12,'#f97316'],[3,12,'#f97316'],[2,13,'#fdba74'],
++    // Ice tower (blue)
++    [6,1,TB],[7,1,TB],[6,2,'#bae6fd'],
++    // Lightning tower (purple)
++    [6,13,TD],[7,13,TD],[6,14,'#d8b4fe'],
++    // Enemy dots (red)
++    [4,5,TR],[5,9,TR],[7,12,TR],
++    // Gold coins
++    [1,7,TY],[1,8,TY],
++    // Wave indicator
++    [9,3,'#a855f7'],[9,4,'#a855f7'],[9,5,'#a855f7'],
++];
++
+ const GAMES = [
+     {
+         name: 'SNAKE',
+@@ -712,6 +740,14 @@ const GAMES = [
+         glow:  'rgba(250,204,21,0.35)',
+         pixels: flappyPixels,
+     },
++    {
++        name: 'TOWER DEFENSE',
++        desc: 'Place towers to stop the enemy horde.',
++        href: 'games/tower-defense/index.html',
++        color: '#a855f7',
++        glow:  'rgba(168,85,247,0.35)',
++        pixels: towerDefPixels,
++    },
+ ];
+ 
+ /* ── Render cards ─────────────────────────────────────── */

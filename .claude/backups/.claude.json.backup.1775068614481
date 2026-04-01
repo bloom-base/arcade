@@ -45,8 +45,7 @@
     "tengu_marble_anvil": true,
     "tengu_tool_pear": false,
     "tengu_scarf_coffee": false,
-    "tengu_tool_input_aliasing": false,
-    "tengu_pid_based_version_locking": true
+    "tengu_tool_input_aliasing": false
   },
   "firstStartTime": "2026-03-19T00:10:29.566Z",
   "opusProMigrationComplete": true,
