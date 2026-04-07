@@ -430,315 +430,346 @@ function makeSVG(pixels, bg = '#0d0d0d', w = 128, h = 80, sz = 8) {
          + `<rect width="${w}" height="${h}" fill="${bg}"/>${rects}</svg>`;
 }
 
-/* ── Pixel-art data  (16 cols × 10 rows @ 8 px each = 128 × 80) ── */
+/* ── Pixel-art data  (16 cols × 10 rows @ 8 px each = 128 × 80) ──
+   Each game's pixel data is wrapped in an IIFE so short colour-constant
+   names (FG, FW, SR …) are scoped per-game and can never collide.
+── */
 
 // Snake — an L-shaped winding body in green
-const G = '#22c55e', H = '#4ade80', F = '#ef4444';
-const snakePixels = [
-    // Horizontal body: row 1, cols 1-12  (tail → corner)
-    ...[1,2,3,4,5,6,7,8,9,10,11,12].map(c => [1, c, G]),
-    // Vertical descent: col 12, rows 2-6
-    ...[2,3,4,5,6].map(r => [r, 12, G]),
-    // Head (brighter): row 7, col 12 — facing down
-    [7, 12, H],
-    // Food dots scattered in the open field
-    [3, 4, F],
-    [5, 8, F],
-];
+const snakePixels = (() => {
+    const G = '#22c55e', H = '#4ade80', F = '#ef4444';
+    return [
+        // Horizontal body: row 1, cols 1-12  (tail → corner)
+        ...[1,2,3,4,5,6,7,8,9,10,11,12].map(c => [1, c, G]),
+        // Vertical descent: col 12, rows 2-6
+        ...[2,3,4,5,6].map(r => [r, 12, G]),
+        // Head (brighter): row 7, col 12 — facing down
+        [7, 12, H],
+        // Food dots scattered in the open field
+        [3, 4, F],
+        [5, 8, F],
+    ];
+})();
 
 // Tetris — colourful stacked blocks + a falling T-piece
-const TC = '#22d3ee', TY = '#fbbf24', TG = '#22c55e', TR = '#ef4444', TM = '#e879f9';
-const tetrisPixels = [
-    // Falling cyan T-piece (top row + stem)
-    [0, 6, TC], [0, 7, TC], [0, 8, TC],
-    [1, 7, TC],
-    // Stack row 6 — full row (14 cols), pairs of contrasting colours
-    [6,0,TR],[6,1,TR],[6,2,TY],[6,3,TY],[6,4,TG],[6,5,TG],
-    [6,6,TC],[6,7,TC],[6,8,TM],[6,9,TM],[6,10,TR],[6,11,TR],
-    [6,12,TY],[6,13,TY],
-    // Stack row 7 — 11 cols
-    [7,0,TY],[7,1,TY],[7,2,TG],[7,3,TG],[7,4,TC],[7,5,TC],
-    [7,6,TR],[7,7,TR],[7,8,TM],[7,9,TM],[7,10,TY],
-    // Stack row 8 — 7 cols
-    [8,0,TG],[8,1,TG],[8,2,TM],[8,3,TM],[8,4,TY],[8,5,TY],[8,6,TC],
-    // Stack row 9 — 4 cols
-    [9,0,TR],[9,1,TR],[9,2,TC],[9,3,TC],
-];
+const tetrisPixels = (() => {
+    const TC = '#22d3ee', TY = '#fbbf24', TG = '#22c55e', TR = '#ef4444', TM = '#e879f9';
+    return [
+        // Falling cyan T-piece (top row + stem)
+        [0, 6, TC], [0, 7, TC], [0, 8, TC],
+        [1, 7, TC],
+        // Stack row 6 — full row (14 cols), pairs of contrasting colours
+        [6,0,TR],[6,1,TR],[6,2,TY],[6,3,TY],[6,4,TG],[6,5,TG],
+        [6,6,TC],[6,7,TC],[6,8,TM],[6,9,TM],[6,10,TR],[6,11,TR],
+        [6,12,TY],[6,13,TY],
+        // Stack row 7 — 11 cols
+        [7,0,TY],[7,1,TY],[7,2,TG],[7,3,TG],[7,4,TC],[7,5,TC],
+        [7,6,TR],[7,7,TR],[7,8,TM],[7,9,TM],[7,10,TY],
+        // Stack row 8 — 7 cols
+        [8,0,TG],[8,1,TG],[8,2,TM],[8,3,TM],[8,4,TY],[8,5,TY],[8,6,TC],
+        // Stack row 9 — 4 cols
+        [9,0,TR],[9,1,TR],[9,2,TC],[9,3,TC],
+    ];
+})();
 
 // Breakout — brick rows + ball + paddle
-const BW = '#f0f0f0', BR = '#ef4444', BO = '#f97316', BY = '#fbbf24';
-const breakoutPixels = [
-    // Red brick row 0: all 14 cols
-    ...[0,1,2,3,4,5,6,7,8,9,10,11,12,13].map(c => [0, c, BR]),
-    // Orange brick row 1: two bricks "missing" (already smashed)
-    ...[0,1,2,3,5,6,7,8,9,11,12,13].map(c => [1, c, BO]),
-    // Yellow brick row 2: several bricks missing — mid-game feel
-    ...[0,1,3,5,6,8,9,11,13].map(c => [2, c, BY]),
-    // Ball: row 5, col 7 (centre-ish, heading up)
-    [5, 7, BW],
-    // Paddle: row 8, cols 3-10 (wide white bar)
-    ...[3,4,5,6,7,8,9,10].map(c => [8, c, BW]),
-];
+const breakoutPixels = (() => {
+    const BW = '#f0f0f0', BR = '#ef4444', BO = '#f97316', BY = '#fbbf24';
+    return [
+        // Red brick row 0: all 14 cols
+        ...[0,1,2,3,4,5,6,7,8,9,10,11,12,13].map(c => [0, c, BR]),
+        // Orange brick row 1: two bricks "missing" (already smashed)
+        ...[0,1,2,3,5,6,7,8,9,11,12,13].map(c => [1, c, BO]),
+        // Yellow brick row 2: several bricks missing — mid-game feel
+        ...[0,1,3,5,6,8,9,11,13].map(c => [2, c, BY]),
+        // Ball: row 5, col 7 (centre-ish, heading up)
+        [5, 7, BW],
+        // Paddle: row 8, cols 3-10 (wide white bar)
+        ...[3,4,5,6,7,8,9,10].map(c => [8, c, BW]),
+    ];
+})();
 
 // Pong — two paddles, dashed centre net, ball
-const PW = '#f0f0f0', PG = '#2e2e2e';
-const pongPixels = [
-    // Left paddle: col 1, rows 3-6
-    ...[3,4,5,6].map(r => [r, 1, PW]),
-    // Right paddle: col 14, rows 4-7
-    ...[4,5,6,7].map(r => [r, 14, PW]),
-    // Centre net: col 8, every other row (dashed)
-    ...[0,2,4,6,8].map(r => [r, 8, PG]),
-    // Ball: row 5, col 5
-    [5, 5, PW],
-];
+const pongPixels = (() => {
+    const PW = '#f0f0f0', PG = '#2e2e2e';
+    return [
+        // Left paddle: col 1, rows 3-6
+        ...[3,4,5,6].map(r => [r, 1, PW]),
+        // Right paddle: col 14, rows 4-7
+        ...[4,5,6,7].map(r => [r, 14, PW]),
+        // Centre net: col 8, every other row (dashed)
+        ...[0,2,4,6,8].map(r => [r, 8, PG]),
+        // Ball: row 5, col 5
+        [5, 5, PW],
+    ];
+})();
 
 // Othello — green board with black & white discs mid-game
-const OG = '#1b5e2a', OB = '#111111', OW = '#f0f0f0';
-const othelloPixels = [
-    // Board background: rows 1-8, cols 4-11
-    ...[1,2,3,4,5,6,7,8].flatMap(r => [4,5,6,7,8,9,10,11].map(c => [r, c, OG])),
-    // Mid-game discs — board cell (br,bc) → pixel (br+1, bc+4)
-    [3, 6, OB],  // (2,2) Black
-    [4, 6, OB],  // (3,2) Black
-    [4, 7, OW],  // (3,3) White
-    [5, 6, OB],  // (4,2) Black
-    [5, 7, OB],  // (4,3) Black
-    [5, 8, OW],  // (4,4) White
-    [6, 7, OW],  // (5,3) White
-    [6, 8, OW],  // (5,4) White
-    [6, 9, OW],  // (5,5) White
-];
+const othelloPixels = (() => {
+    const OG = '#1b5e2a', OB = '#111111', OW = '#f0f0f0';
+    return [
+        // Board background: rows 1-8, cols 4-11
+        ...[1,2,3,4,5,6,7,8].flatMap(r => [4,5,6,7,8,9,10,11].map(c => [r, c, OG])),
+        // Mid-game discs — board cell (br,bc) → pixel (br+1, bc+4)
+        [3, 6, OB],  // (2,2) Black
+        [4, 6, OB],  // (3,2) Black
+        [4, 7, OW],  // (3,3) White
+        [5, 6, OB],  // (4,2) Black
+        [5, 7, OB],  // (4,3) Black
+        [5, 8, OW],  // (4,4) White
+        [6, 7, OW],  // (5,3) White
+        [6, 8, OW],  // (5,4) White
+        [6, 9, OW],  // (5,5) White
+    ];
+})();
 
 // Whack-A-Mole — brown dirt field, three holes, mole popping from centre
-const WG = '#6b3f1a', WD = '#0d0800', WM = '#9b6431', WP = '#d48898', WE = '#fffff0';
-const whacPixels = [
-    // Ground: rows 5-9, all 16 cols
-    ...[5,6,7,8,9].flatMap(r => Array.from({length:16}, (_,c) => [r, c, WG])),
-    // Left hole: cols 1-3, rows 6-8
-    [6,1,WD],[6,2,WD],[6,3,WD],
-    [7,1,WD],[7,2,WD],[7,3,WD],
-    [8,2,WD],
-    // Right hole: cols 11-13, rows 6-8
-    [6,11,WD],[6,12,WD],[6,13,WD],
-    [7,11,WD],[7,12,WD],[7,13,WD],
-    [8,12,WD],
-    // Centre hole lower part (mole covers row 6)
-    [7,6,WD],[7,7,WD],[7,8,WD],
-    [8,7,WD],
-    // Mole rising from centre hole (rows 2-6)
-    [2,7,WM],
-    [3,6,WM],[3,7,WM],[3,8,WM],
-    [4,6,WM],[4,7,WM],[4,8,WM],
-    [5,6,WM],[5,7,WM],[5,8,WM],
-    [6,6,WM],[6,7,WM],[6,8,WM],
-    // Eyes (override head row 3)
-    [3,6,WE],[3,8,WE],
-    // Nose (override face row 4)
-    [4,7,WP],
-];
+const whacPixels = (() => {
+    const WG = '#6b3f1a', WD = '#0d0800', WM = '#9b6431', WP = '#d48898', WE = '#fffff0';
+    return [
+        // Ground: rows 5-9, all 16 cols
+        ...[5,6,7,8,9].flatMap(r => Array.from({length:16}, (_,c) => [r, c, WG])),
+        // Left hole: cols 1-3, rows 6-8
+        [6,1,WD],[6,2,WD],[6,3,WD],
+        [7,1,WD],[7,2,WD],[7,3,WD],
+        [8,2,WD],
+        // Right hole: cols 11-13, rows 6-8
+        [6,11,WD],[6,12,WD],[6,13,WD],
+        [7,11,WD],[7,12,WD],[7,13,WD],
+        [8,12,WD],
+        // Centre hole lower part (mole covers row 6)
+        [7,6,WD],[7,7,WD],[7,8,WD],
+        [8,7,WD],
+        // Mole rising from centre hole (rows 2-6)
+        [2,7,WM],
+        [3,6,WM],[3,7,WM],[3,8,WM],
+        [4,6,WM],[4,7,WM],[4,8,WM],
+        [5,6,WM],[5,7,WM],[5,8,WM],
+        [6,6,WM],[6,7,WM],[6,8,WM],
+        // Eyes (override head row 3)
+        [3,6,WE],[3,8,WE],
+        // Nose (override face row 4)
+        [4,7,WP],
+    ];
+})();
 
 // Solitaire — card backs (stock), face-up cards in tableau, foundation suits
-const SP = '#f472b6', SW2 = '#c8c8d8', SB2 = '#0f2444', SBC = '#1a3a6a', SR2 = '#ef4444';
-const solitairePixels = [
-    // Stock pile (top-left): face-down card, col 0-1, row 0-3
-    [0,0,SB2],[0,1,SB2],[1,0,SBC],[1,1,SB2],[2,0,SB2],[2,1,SBC],[3,0,SB2],[3,1,SB2],
-    // Foundation card (top-right): pink card with ♠, col 13-14, row 0-3
-    [0,13,SW2],[0,14,SW2],[1,13,SP],[1,14,SW2],[2,13,SW2],[2,14,SP],[3,13,SW2],[3,14,SW2],
-    // Tableau — 5 cascading columns (rows 5-9)
-    // Col A (face-down), cols 0-1
-    [5,0,SB2],[5,1,SB2],[6,0,SBC],[6,1,SB2],
-    // Col B (face-up red), cols 3-4
-    [5,3,SW2],[5,4,SW2],[6,3,SR2],[6,4,SW2],[7,3,SW2],[7,4,SW2],
-    // Col C (face-up pink/black), cols 6-7
-    [5,6,SW2],[5,7,SW2],[6,6,SW2],[6,7,SP],[7,6,SP],[7,7,SW2],[8,6,SW2],[8,7,SW2],
-    // Col D (face-up red), cols 9-10
-    [5,9,SW2],[5,10,SW2],[6,9,SW2],[6,10,SW2],[7,9,SR2],[7,10,SW2],[8,9,SW2],[8,10,SW2],[9,9,SW2],[9,10,SW2],
-    // Col E (face-down), cols 12-13
-    [5,12,SB2],[5,13,SB2],[6,12,SB2],[6,13,SBC],[7,12,SBC],[7,13,SB2],
-];
+const solitairePixels = (() => {
+    const SP = '#f472b6', SW2 = '#c8c8d8', SB2 = '#0f2444', SBC = '#1a3a6a', SR2 = '#ef4444';
+    return [
+        // Stock pile (top-left): face-down card, col 0-1, row 0-3
+        [0,0,SB2],[0,1,SB2],[1,0,SBC],[1,1,SB2],[2,0,SB2],[2,1,SBC],[3,0,SB2],[3,1,SB2],
+        // Foundation card (top-right): pink card with ♠, col 13-14, row 0-3
+        [0,13,SW2],[0,14,SW2],[1,13,SP],[1,14,SW2],[2,13,SW2],[2,14,SP],[3,13,SW2],[3,14,SW2],
+        // Tableau — 5 cascading columns (rows 5-9)
+        // Col A (face-down), cols 0-1
+        [5,0,SB2],[5,1,SB2],[6,0,SBC],[6,1,SB2],
+        // Col B (face-up red), cols 3-4
+        [5,3,SW2],[5,4,SW2],[6,3,SR2],[6,4,SW2],[7,3,SW2],[7,4,SW2],
+        // Col C (face-up pink/black), cols 6-7
+        [5,6,SW2],[5,7,SW2],[6,6,SW2],[6,7,SP],[7,6,SP],[7,7,SW2],[8,6,SW2],[8,7,SW2],
+        // Col D (face-up red), cols 9-10
+        [5,9,SW2],[5,10,SW2],[6,9,SW2],[6,10,SW2],[7,9,SR2],[7,10,SW2],[8,9,SW2],[8,10,SW2],[9,9,SW2],[9,10,SW2],
+        // Col E (face-down), cols 12-13
+        [5,12,SB2],[5,13,SB2],[6,12,SB2],[6,13,SBC],[7,12,SBC],[7,13,SB2],
+    ];
+})();
 
 // Simon — four coloured quadrants with highlight glints
-const SR = '#b01800', SB = '#002299', SG = '#006600', SY = '#aa7700';
-const SRL = '#ff5533', SBL = '#3366ff', SGL = '#22ee44', SYL = '#ffdd00';
-const simonPixels = [
-    // Red quadrant   (top-left:    rows 0-3, cols 0-6)
-    ...[0,1,2,3].flatMap(r => [0,1,2,3,4,5,6].map(c => [r, c, SR])),
-    // Blue quadrant  (top-right:   rows 0-3, cols 8-15)
-    ...[0,1,2,3].flatMap(r => [8,9,10,11,12,13,14,15].map(c => [r, c, SB])),
-    // Green quadrant (bottom-left: rows 5-9, cols 0-6)
-    ...[5,6,7,8,9].flatMap(r => [0,1,2,3,4,5,6].map(c => [r, c, SG])),
-    // Yellow quadrant(bottom-right:rows 5-9, cols 8-15)
-    ...[5,6,7,8,9].flatMap(r => [8,9,10,11,12,13,14,15].map(c => [r, c, SY])),
-    // Highlight glints (upper-left corner of each quadrant)
-    [0,1,SRL],[0,2,SRL],[1,1,SRL],
-    [0,9,SBL],[0,10,SBL],[1,9,SBL],
-    [5,1,SGL],[5,2,SGL],[6,1,SGL],
-    [5,9,SYL],[5,10,SYL],[6,9,SYL],
-];
+const simonPixels = (() => {
+    const SR = '#b01800', SB = '#002299', SG = '#006600', SY = '#aa7700';
+    const SRL = '#ff5533', SBL = '#3366ff', SGL = '#22ee44', SYL = '#ffdd00';
+    return [
+        // Red quadrant   (top-left:    rows 0-3, cols 0-6)
+        ...[0,1,2,3].flatMap(r => [0,1,2,3,4,5,6].map(c => [r, c, SR])),
+        // Blue quadrant  (top-right:   rows 0-3, cols 8-15)
+        ...[0,1,2,3].flatMap(r => [8,9,10,11,12,13,14,15].map(c => [r, c, SB])),
+        // Green quadrant (bottom-left: rows 5-9, cols 0-6)
+        ...[5,6,7,8,9].flatMap(r => [0,1,2,3,4,5,6].map(c => [r, c, SG])),
+        // Yellow quadrant(bottom-right:rows 5-9, cols 8-15)
+        ...[5,6,7,8,9].flatMap(r => [8,9,10,11,12,13,14,15].map(c => [r, c, SY])),
+        // Highlight glints (upper-left corner of each quadrant)
+        [0,1,SRL],[0,2,SRL],[1,1,SRL],
+        [0,9,SBL],[0,10,SBL],[1,9,SBL],
+        [5,1,SGL],[5,2,SGL],[6,1,SGL],
+        [5,9,SYL],[5,10,SYL],[6,9,SYL],
+    ];
+})();
 
 // Minesweeper — dark grid with numbered cells, flags and a mine
-const MC = '#38bdf8', MG = '#1e293b', MF = '#ef4444', MM = '#111', MB = '#1a1a1a';
-const minesweeperPixels = [
-    // Grid background: all cells dark
-    ...[0,1,2,3,4,5,6,7,8,9].flatMap(r => Array.from({length:16}, (_,c) => [r, c, MM])),
-    // Revealed cells (lighter): a 4x4 block top-left
-    ...[0,1,2,3].flatMap(r => [0,1,2,3].map(c => [r, c, MG])),
-    // Numbers in revealed block
-    [0,0,MC],[1,1,MC],[2,2,MC],[0,3,MC],
-    // Flag in unrevealed cell (col 7, rows 3-5)
-    [3,7,MB],[4,7,MB],[5,7,MB],
-    [3,8,MF],[4,8,MF],
-    [5,8,MB],
-    // Mine (dark circle with spikes) at col 11-13, row 6-8
-    [6,11,'#555'],[6,12,MC],[6,13,'#555'],
-    [7,11,MC],[7,12,'#1a1a1a'],[7,13,MC],
-    [8,11,'#555'],[8,12,MC],[8,13,'#555'],
-    // Blast/explosion hint
-    [5,12,'#ef4444'],[9,12,'#ef4444'],[7,10,'#ef4444'],[7,14,'#ef4444'],
-];
+const minesweeperPixels = (() => {
+    const MC = '#38bdf8', MG = '#1e293b', MF = '#ef4444', MM = '#111', MB = '#1a1a1a';
+    return [
+        // Grid background: all cells dark
+        ...[0,1,2,3,4,5,6,7,8,9].flatMap(r => Array.from({length:16}, (_,c) => [r, c, MM])),
+        // Revealed cells (lighter): a 4x4 block top-left
+        ...[0,1,2,3].flatMap(r => [0,1,2,3].map(c => [r, c, MG])),
+        // Numbers in revealed block
+        [0,0,MC],[1,1,MC],[2,2,MC],[0,3,MC],
+        // Flag in unrevealed cell (col 7, rows 3-5)
+        [3,7,MB],[4,7,MB],[5,7,MB],
+        [3,8,MF],[4,8,MF],
+        [5,8,MB],
+        // Mine (dark circle with spikes) at col 11-13, row 6-8
+        [6,11,'#555'],[6,12,MC],[6,13,'#555'],
+        [7,11,MC],[7,12,'#1a1a1a'],[7,13,MC],
+        [8,11,'#555'],[8,12,MC],[8,13,'#555'],
+        // Blast/explosion hint
+        [5,12,'#ef4444'],[9,12,'#ef4444'],[7,10,'#ef4444'],[7,14,'#ef4444'],
+    ];
+})();
 
 // Flappy Bird — yellow bird in flight between green pipes
-const FY = '#facc15', FO = '#f97316', FG = '#4ade80', FD = '#166534', FW = '#ffffff';
-const flappyPixels = [
-    // Top pipe body (cols 11–13, rows 0–2)
-    [0,11,FG],[0,12,FG],[0,13,FG],
-    [1,11,FG],[1,12,FG],[1,13,FG],
-    [2,11,FG],[2,12,FG],[2,13,FG],
-    // Top pipe cap wider (cols 10–14, row 3)
-    [3,10,FG],[3,11,FG],[3,12,FG],[3,13,FG],[3,14,FG],
-    // Dark left edge on top pipe
-    [0,11,FD],[1,11,FD],[2,11,FD],[3,10,FD],
-    // Bird body (rows 4–5, cols 2–7)
-    [4,2,FY],[4,3,FY],[4,4,FY],[4,5,FY],[4,6,FY],
-    [5,2,FY],[5,3,FY],[5,4,FY],[5,5,FY],[5,6,FY],
-    // Beak
-    [4,7,FO],[5,7,FO],
-    // Eye
-    [4,5,FW],
-    // Wing detail
-    [5,3,'#ca8a04'],[5,4,'#ca8a04'],
-    // Bottom pipe cap (cols 10–14, row 6)
-    [6,10,FG],[6,11,FG],[6,12,FG],[6,13,FG],[6,14,FG],
-    // Dark left edge on bottom pipe cap
-    [6,10,FD],
-    // Bottom pipe body (cols 11–13, rows 7–9)
-    [7,11,FG],[7,12,FG],[7,13,FG],
-    [8,11,FG],[8,12,FG],[8,13,FG],
-    [9,11,FG],[9,12,FG],[9,13,FG],
-    // Dark left edge on bottom pipe body
-    [7,11,FD],[8,11,FD],[9,11,FD],
-];
+const flappyPixels = (() => {
+    const FY = '#facc15', FO = '#f97316', FG = '#4ade80', FD = '#166534', FW = '#ffffff';
+    return [
+        // Top pipe body (cols 11–13, rows 0–2)
+        [0,11,FG],[0,12,FG],[0,13,FG],
+        [1,11,FG],[1,12,FG],[1,13,FG],
+        [2,11,FG],[2,12,FG],[2,13,FG],
+        // Top pipe cap wider (cols 10–14, row 3)
+        [3,10,FG],[3,11,FG],[3,12,FG],[3,13,FG],[3,14,FG],
+        // Dark left edge on top pipe
+        [0,11,FD],[1,11,FD],[2,11,FD],[3,10,FD],
+        // Bird body (rows 4–5, cols 2–7)
+        [4,2,FY],[4,3,FY],[4,4,FY],[4,5,FY],[4,6,FY],
+        [5,2,FY],[5,3,FY],[5,4,FY],[5,5,FY],[5,6,FY],
+        // Beak
+        [4,7,FO],[5,7,FO],
+        // Eye
+        [4,5,FW],
+        // Wing detail
+        [5,3,'#ca8a04'],[5,4,'#ca8a04'],
+        // Bottom pipe cap (cols 10–14, row 6)
+        [6,10,FG],[6,11,FG],[6,12,FG],[6,13,FG],[6,14,FG],
+        // Dark left edge on bottom pipe cap
+        [6,10,FD],
+        // Bottom pipe body (cols 11–13, rows 7–9)
+        [7,11,FG],[7,12,FG],[7,13,FG],
+        [8,11,FG],[8,12,FG],[8,13,FG],
+        [9,11,FG],[9,12,FG],[9,13,FG],
+        // Dark left edge on bottom pipe body
+        [7,11,FD],[8,11,FD],[9,11,FD],
+    ];
+})();
 
 /* ── Game definitions ──────────────────────────────────── */
 // Tower Defense — winding path with towers and enemies
-const TW_D = '#a855f7', TW_G = '#22c55e', TW_R = '#ef4444', TW_Y = '#facc15', TW_B = '#38bdf8';
-const towerDefPixels = [
-    // Path background (dark blue)
-    ...[3,4,5,6,7,8,9].map(c => [4, c, '#1e293b']),
-    ...[5,6,7].map(r => [r, 4, '#1e293b']),
-    ...[5,6,7].map(r => [r, 9, '#1e293b']),
-    ...[8,9,10,11,12].map(c => [7, c, '#1e293b']),
-    // Path arrows (lighter)
-    [4,6,'#334155'],[4,7,'#334155'],[4,8,'#334155'],
-    [6,4,'#334155'],[6,9,'#334155'],
-    [7,10,'#334155'],[7,11,'#334155'],
-    // Arrow tower (green)
-    [2,2,TW_G],[3,2,TW_G],[2,1,'#86efac'],
-    // Cannon tower (orange)
-    [2,12,'#f97316'],[3,12,'#f97316'],[2,13,'#fdba74'],
-    // Ice tower (blue)
-    [6,1,TW_B],[7,1,TW_B],[6,2,'#bae6fd'],
-    // Lightning tower (purple)
-    [6,13,TW_D],[7,13,TW_D],[6,14,'#d8b4fe'],
-    // Enemy dots (red)
-    [4,5,TW_R],[5,9,TW_R],[7,12,TW_R],
-    // Gold coins
-    [1,7,TW_Y],[1,8,TW_Y],
-    // Wave indicator
-    [9,3,'#a855f7'],[9,4,'#a855f7'],[9,5,'#a855f7'],
-];
+const towerDefPixels = (() => {
+    const TW_D = '#a855f7', TW_G = '#22c55e', TW_R = '#ef4444', TW_Y = '#facc15', TW_B = '#38bdf8';
+    return [
+        // Path background (dark blue)
+        ...[3,4,5,6,7,8,9].map(c => [4, c, '#1e293b']),
+        ...[5,6,7].map(r => [r, 4, '#1e293b']),
+        ...[5,6,7].map(r => [r, 9, '#1e293b']),
+        ...[8,9,10,11,12].map(c => [7, c, '#1e293b']),
+        // Path arrows (lighter)
+        [4,6,'#334155'],[4,7,'#334155'],[4,8,'#334155'],
+        [6,4,'#334155'],[6,9,'#334155'],
+        [7,10,'#334155'],[7,11,'#334155'],
+        // Arrow tower (green)
+        [2,2,TW_G],[3,2,TW_G],[2,1,'#86efac'],
+        // Cannon tower (orange)
+        [2,12,'#f97316'],[3,12,'#f97316'],[2,13,'#fdba74'],
+        // Ice tower (blue)
+        [6,1,TW_B],[7,1,TW_B],[6,2,'#bae6fd'],
+        // Lightning tower (purple)
+        [6,13,TW_D],[7,13,TW_D],[6,14,'#d8b4fe'],
+        // Enemy dots (red)
+        [4,5,TW_R],[5,9,TW_R],[7,12,TW_R],
+        // Gold coins
+        [1,7,TW_Y],[1,8,TW_Y],
+        // Wave indicator
+        [9,3,'#a855f7'],[9,4,'#a855f7'],[9,5,'#a855f7'],
+    ];
+})();
 
 // Excitebike — side-scrolling motorcycle on dirt track
-const EB_O = '#f97316', EB_T = '#8B7355', EB_S = '#0f0f23', EB_W = '#f0f0f0', EB_D = '#5C4A30';
-const excitebikePixels = [
-    // Sky (rows 0-3)
-    ...[0,1,2,3].flatMap(r => Array.from({length:15},(_,c) => [r, c, EB_S])),
-    // Mountains
-    [2,2,'#16213e'],[2,3,'#16213e'],[1,3,'#16213e'],
-    [2,8,'#16213e'],[2,9,'#16213e'],[1,9,'#16213e'],
-    [2,12,'#16213e'],[2,13,'#16213e'],[1,13,'#16213e'],
-    // Track surface (rows 4-8)
-    ...[4,5,6,7,8].flatMap(r => Array.from({length:15},(_,c) => [r, c, EB_T])),
-    // Lane dividers
-    ...[0,2,4,6,8,10,12,14].map(c => [5, c, EB_D]),
-    ...[0,2,4,6,8,10,12,14].map(c => [7, c, EB_D]),
-    // Track borders (white)
-    ...Array.from({length:15},(_,c) => [4, c, EB_W]),
-    ...Array.from({length:15},(_,c) => [8, c, EB_W]),
-    // Ramp
-    [6,9,'#e8b88a'],[5,10,'#e8b88a'],[6,10,'#d4a574'],
-    // Rider (orange bike + helmet)
-    [5,3,EB_O],[6,3,EB_O],[6,4,EB_O],
-    [5,2,'#ffd5a0'], // head
-    [5,4,'#222'],     // front wheel
-    [6,2,'#222'],     // rear wheel
-    // AI rider (red)
-    [6,7,'#ef4444'],[7,7,'#ef4444'],[7,8,'#222'],
-    // Ground (row 9)
-    ...Array.from({length:15},(_,c) => [9, c, '#4a3728']),
-];
+const excitebikePixels = (() => {
+    const EB_O = '#f97316', EB_T = '#8B7355', EB_S = '#0f0f23', EB_W = '#f0f0f0', EB_D = '#5C4A30';
+    return [
+        // Sky (rows 0-3)
+        ...[0,1,2,3].flatMap(r => Array.from({length:15},(_,c) => [r, c, EB_S])),
+        // Mountains
+        [2,2,'#16213e'],[2,3,'#16213e'],[1,3,'#16213e'],
+        [2,8,'#16213e'],[2,9,'#16213e'],[1,9,'#16213e'],
+        [2,12,'#16213e'],[2,13,'#16213e'],[1,13,'#16213e'],
+        // Track surface (rows 4-8)
+        ...[4,5,6,7,8].flatMap(r => Array.from({length:15},(_,c) => [r, c, EB_T])),
+        // Lane dividers
+        ...[0,2,4,6,8,10,12,14].map(c => [5, c, EB_D]),
+        ...[0,2,4,6,8,10,12,14].map(c => [7, c, EB_D]),
+        // Track borders (white)
+        ...Array.from({length:15},(_,c) => [4, c, EB_W]),
+        ...Array.from({length:15},(_,c) => [8, c, EB_W]),
+        // Ramp
+        [6,9,'#e8b88a'],[5,10,'#e8b88a'],[6,10,'#d4a574'],
+        // Rider (orange bike + helmet)
+        [5,3,EB_O],[6,3,EB_O],[6,4,EB_O],
+        [5,2,'#ffd5a0'], // head
+        [5,4,'#222'],     // front wheel
+        [6,2,'#222'],     // rear wheel
+        // AI rider (red)
+        [6,7,'#ef4444'],[7,7,'#ef4444'],[7,8,'#222'],
+        // Ground (row 9)
+        ...Array.from({length:15},(_,c) => [9, c, '#4a3728']),
+    ];
+})();
 
 // Asteroids — triangular ship and jagged asteroid outlines on dark space
-const AS = '#0ff', AD = '#066';
-const asteroidsPixels = [
-    // Ship (triangle pointing right, center-left area)
-    [5,3,AS],[4,2,AS],[6,2,AS],[4,1,AS],[6,1,AS],[5,1,AD],
-    // Thrust flame
-    [5,0,'#f97316'],
-    // Bullets
-    [5,5,AS],[5,7,'#fff'],[5,9,'#fff'],
-    // Large asteroid (top-right area)
-    [1,10,AS],[0,11,AS],[0,12,AS],[0,13,AS],[1,14,AS],[2,14,AS],[3,13,AS],[3,12,AS],[3,11,AS],[2,10,AS],
-    [1,11,AD],[1,12,AD],[2,12,AD],[2,11,AD],
-    // Medium asteroid (bottom-right)
-    [7,12,AS],[6,13,AS],[7,14,AS],[8,14,AS],[9,13,AS],[8,12,AS],
-    [7,13,AD],[8,13,AD],
-    // Small asteroid (middle)
-    [7,7,AS],[6,8,AS],[7,9,AS],[8,8,AS],
-    // Explosion particles
-    [4,11,'#f97316'],[2,9,'#f97316'],[8,10,'#ff4444'],
-    // Stars
-    [0,2,'#333'],[3,6,'#333'],[9,1,'#333'],[1,8,'#333'],[8,4,'#333'],
-];
+const asteroidsPixels = (() => {
+    const AS = '#0ff', AD = '#066';
+    return [
+        // Ship (triangle pointing right, center-left area)
+        [5,3,AS],[4,2,AS],[6,2,AS],[4,1,AS],[6,1,AS],[5,1,AD],
+        // Thrust flame
+        [5,0,'#f97316'],
+        // Bullets
+        [5,5,AS],[5,7,'#fff'],[5,9,'#fff'],
+        // Large asteroid (top-right area)
+        [1,10,AS],[0,11,AS],[0,12,AS],[0,13,AS],[1,14,AS],[2,14,AS],[3,13,AS],[3,12,AS],[3,11,AS],[2,10,AS],
+        [1,11,AD],[1,12,AD],[2,12,AD],[2,11,AD],
+        // Medium asteroid (bottom-right)
+        [7,12,AS],[6,13,AS],[7,14,AS],[8,14,AS],[9,13,AS],[8,12,AS],
+        [7,13,AD],[8,13,AD],
+        // Small asteroid (middle)
+        [7,7,AS],[6,8,AS],[7,9,AS],[8,8,AS],
+        // Explosion particles
+        [4,11,'#f97316'],[2,9,'#f97316'],[8,10,'#ff4444'],
+        // Stars
+        [0,2,'#333'],[3,6,'#333'],[9,1,'#333'],[1,8,'#333'],[8,4,'#333'],
+    ];
+})();
 
 // Frogger — frog crossing road and river
-const FG = '#4ade80', FW = '#0a1628', FR = '#1a1a2e', FL = '#8B4513', FC = '#ef4444';
-const froggerPixels = [
-    // Water zone (rows 0-3)
-    ...[0,1,2,3].flatMap(r => Array.from({length:16}, (_,c) => [r, c, FW])),
-    // Log on row 1
-    [1,2,FL],[1,3,FL],[1,4,FL],[1,5,FL],
-    // Log on row 3
-    [3,8,FL],[3,9,FL],[3,10,FL],
-    // Turtle on row 2
-    [2,10,'#22c55e'],[2,11,'#22c55e'],[2,12,'#22c55e'],
-    // Median (row 4)
-    ...[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(c => [4, c, '#1a2a0a']),
-    // Road zone (rows 5-8)
-    ...[5,6,7,8].flatMap(r => Array.from({length:16}, (_,c) => [r, c, FR])),
-    // Cars / trucks
-    [5,3,FC],[5,4,FC],
-    [6,10,'#f59e0b'],[6,11,'#f59e0b'],
-    [7,1,'#a78bfa'],[7,2,'#a78bfa'],[7,3,'#a78bfa'],
-    [8,7,FC],[8,8,FC],
-    // Sidewalk (row 9)
-    ...[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(c => [9, c, '#2a1a0a']),
-    // Frog (center of sidewalk)
-    [9,7,FG],[9,8,FG],
-    // Home slots at top
-    [0,2,FG],[0,5,'#fbbf24'],[0,8,FG],[0,11,FG],[0,14,FG],
-];
+const froggerPixels = (() => {
+    const FG = '#4ade80', FW = '#0a1628', FR = '#1a1a2e', FL = '#8B4513', FC = '#ef4444';
+    return [
+        // Water zone (rows 0-3)
+        ...[0,1,2,3].flatMap(r => Array.from({length:16}, (_,c) => [r, c, FW])),
+        // Log on row 1
+        [1,2,FL],[1,3,FL],[1,4,FL],[1,5,FL],
+        // Log on row 3
+        [3,8,FL],[3,9,FL],[3,10,FL],
+        // Turtle on row 2
+        [2,10,'#22c55e'],[2,11,'#22c55e'],[2,12,'#22c55e'],
+        // Median (row 4)
+        ...[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(c => [4, c, '#1a2a0a']),
+        // Road zone (rows 5-8)
+        ...[5,6,7,8].flatMap(r => Array.from({length:16}, (_,c) => [r, c, FR])),
+        // Cars / trucks
+        [5,3,FC],[5,4,FC],
+        [6,10,'#f59e0b'],[6,11,'#f59e0b'],
+        [7,1,'#a78bfa'],[7,2,'#a78bfa'],[7,3,'#a78bfa'],
+        [8,7,FC],[8,8,FC],
+        // Sidewalk (row 9)
+        ...[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(c => [9, c, '#2a1a0a']),
+        // Frog (center of sidewalk)
+        [9,7,FG],[9,8,FG],
+        // Home slots at top
+        [0,2,FG],[0,5,'#fbbf24'],[0,8,FG],[0,11,FG],[0,14,FG],
+    ];
+})();
 
 const contraPixels = [
     // Sky background (dark blue, rows 0-6)
