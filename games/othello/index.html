@@ -186,12 +186,116 @@
             text-decoration: none;
         }
         .menu-btn.secondary:hover { color: #fafafa; border-color: #555; }
+
+        /* ── Mode Selection Screen ────────────── */
+        #mode-select {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.94);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 210;
+            gap: 1.5rem;
+            opacity: 1;
+            transition: opacity 0.35s ease;
+        }
+        #mode-select.hidden { opacity: 0; pointer-events: none; }
+
+        #mode-select .mode-title {
+            font-size: clamp(0.85rem, 3.5vw, 1.3rem);
+            letter-spacing: 0.25em;
+            color: #4ade80;
+            text-shadow: 0 0 24px rgba(74,222,128,0.55);
+            margin-bottom: 0.5rem;
+        }
+
+        #mode-select .mode-subtitle {
+            font-size: clamp(0.32rem, 1.1vw, 0.42rem);
+            color: #525252;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.75rem;
+        }
+
+        .mode-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(0.4rem, 1.5vw, 0.55rem);
+            padding: 1rem 2rem;
+            cursor: pointer;
+            letter-spacing: 0.08em;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            background: transparent;
+            color: #d4d4d4;
+            border: 1.5px solid #333;
+            min-width: 260px;
+        }
+        .mode-btn:hover {
+            border-color: #4ade80;
+            color: #fafafa;
+            box-shadow: 0 0 20px rgba(74,222,128,0.2);
+            transform: scale(1.03);
+        }
+        .mode-btn:active { transform: scale(0.98); }
+
+        .mode-btn .mode-desc {
+            font-size: clamp(0.25rem, 0.8vw, 0.32rem);
+            color: #666;
+            letter-spacing: 0.06em;
+        }
+        .mode-btn:hover .mode-desc { color: #888; }
+
+        /* ── AI thinking indicator ────────────── */
+        #thinking-bar {
+            height: 3px;
+            background: transparent;
+            width: 100%;
+            max-width: calc(var(--board-px) * 1px);
+            position: relative;
+            overflow: hidden;
+        }
+        #thinking-bar.active {
+            background: #1a1a1a;
+        }
+        #thinking-bar.active::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -40%;
+            width: 40%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, #4ade80, transparent);
+            animation: think-slide 0.8s ease-in-out infinite;
+        }
+        @keyframes think-slide {
+            0%   { left: -40%; }
+            100% { left: 100%; }
+        }
     </style>
 </head>
 <body>
 
 <a class="back-btn" href="../../index.html#games">← BACK</a>
 <button class="mute-btn" id="muteBtn" title="M to toggle">♪ SFX</button>
+
+<!-- Mode Selection Screen -->
+<div id="mode-select">
+    <div class="mode-title">OTHELLO</div>
+    <div class="mode-subtitle">SELECT MODE</div>
+    <button class="mode-btn" id="mode-pvp">
+        👤 VS 👤
+        <span class="mode-desc">PLAYER VS PLAYER</span>
+    </button>
+    <button class="mode-btn" id="mode-pvai">
+        👤 VS 🤖
+        <span class="mode-desc">PLAYER VS AI</span>
+    </button>
+    <a class="menu-btn secondary" href="../../index.html#games" style="margin-top: 0.5rem;">← ARCADE</a>
+</div>
 
 <div id="game-wrap">
     <div id="title">OTHELLO</div>
@@ -210,6 +314,7 @@
         </div>
     </div>
 
+    <div id="thinking-bar"></div>
     <canvas id="canvas"></canvas>
 </div>
 
@@ -238,6 +343,9 @@ const maxBoard = Math.min(
 const CELL      = Math.max(38, Math.min(62, Math.floor((maxBoard - PAD * 2) / N)));
 const BOARD_PX  = CELL * N;
 const CANVAS_SZ = BOARD_PX + PAD * 2;
+
+// Set CSS variable for thinking bar width
+document.getElementById('thinking-bar').style.maxWidth = BOARD_PX + PAD * 2 + 'px';
 
 const DIRS = [
     [-1,-1], [-1, 0], [-1, 1],
@@ -270,6 +378,21 @@ let hoverR    = -1;
 let hoverC    = -1;
 let lastMove  = null;
 let skipMsg   = '';
+
+// Game mode: 'pvp' or 'pvai'
+let gameMode  = null;
+let aiPlayer  = 2;        // AI plays white
+let aiThinking = false;   // true while AI is computing
+
+/* ═══════════════════════════════════════════════════════
+   AI Search Depth (tied to arcade difficulty)
+═══════════════════════════════════════════════════════ */
+function getAIDepth() {
+    const d = getDifficulty();
+    if (d === 'easy')   return 2;
+    if (d === 'hard')   return 5;
+    return 4; // normal
+}
 
 /* ═══════════════════════════════════════════════════════
    Audio (Web Audio API — no external files)
@@ -326,6 +449,8 @@ function initBoard() {
     gameOver  = false;
     lastMove  = null;
     skipMsg   = '';
+    aiThinking = false;
+    setThinkingBar(false);
 }
 
 /**
@@ -359,12 +484,12 @@ function validMoves(player, b = board) {
     return moves;
 }
 
-function countDiscs() {
+function countDiscs(b = board) {
     let black = 0, white = 0;
     for (let r = 0; r < N; r++)
         for (let c = 0; c < N; c++) {
-            if (board[r][c] === 1) black++;
-            else if (board[r][c] === 2) white++;
+            if (b[r][c] === 1) black++;
+            else if (b[r][c] === 2) white++;
         }
     return { black, white };
 }
@@ -416,22 +541,277 @@ function endGame() {
     const winnerEl = document.getElementById('overlay-winner');
     const finalEl  = document.getElementById('overlay-final');
 
-    if (black > white) {
-        winnerEl.textContent = 'BLACK WINS!';
-        winnerEl.style.color = '#d4d4d4';
-        snd.win();
-    } else if (white > black) {
-        winnerEl.textContent = 'WHITE WINS!';
-        winnerEl.style.color = '#f0f0f0';
-        snd.win();
+    if (gameMode === 'pvai') {
+        // Show YOU WIN / AI WINS for single-player
+        if (black > white) {
+            winnerEl.textContent = 'YOU WIN!';
+            winnerEl.style.color = '#4ade80';
+            snd.win();
+        } else if (white > black) {
+            winnerEl.textContent = 'AI WINS!';
+            winnerEl.style.color = '#ef4444';
+            snd.win();
+        } else {
+            winnerEl.textContent = "IT'S A DRAW!";
+            winnerEl.style.color = '#fbbf24';
+            snd.tie();
+        }
     } else {
-        winnerEl.textContent = "IT'S A DRAW!";
-        winnerEl.style.color = '#fbbf24';
-        snd.tie();
+        if (black > white) {
+            winnerEl.textContent = 'BLACK WINS!';
+            winnerEl.style.color = '#d4d4d4';
+            snd.win();
+        } else if (white > black) {
+            winnerEl.textContent = 'WHITE WINS!';
+            winnerEl.style.color = '#f0f0f0';
+            snd.win();
+        } else {
+            winnerEl.textContent = "IT'S A DRAW!";
+            winnerEl.style.color = '#fbbf24';
+            snd.tie();
+        }
     }
 
     finalEl.textContent = `BLACK ${black}  ·  WHITE ${white}`;
     document.getElementById('overlay').classList.add('show');
+}
+
+/* ═══════════════════════════════════════════════════════
+   AI Engine — Minimax with Alpha-Beta Pruning
+═══════════════════════════════════════════════════════ */
+
+/**
+ * Positional weight table.
+ * Corners are extremely valuable, edges are good,
+ * cells adjacent to corners (X-squares, C-squares) are dangerous.
+ */
+const POS_WEIGHTS = [
+    [ 100, -20,  11,   8,   8,  11, -20,  100],
+    [ -20, -40,  -2,  -2,  -2,  -2, -40,  -20],
+    [  11,  -2,   4,   2,   2,   4,  -2,   11],
+    [   8,  -2,   2,   0,   0,   2,  -2,    8],
+    [   8,  -2,   2,   0,   0,   2,  -2,    8],
+    [  11,  -2,   4,   2,   2,   4,  -2,   11],
+    [ -20, -40,  -2,  -2,  -2,  -2, -40,  -20],
+    [ 100, -20,  11,   8,   8,  11, -20,  100],
+];
+
+/**
+ * Dynamic weight adjustment: once a corner is captured,
+ * adjacent cells become safe, so we neutralize their penalties.
+ */
+function getAdjustedWeights(b) {
+    // Start with a copy of the base weights
+    const w = POS_WEIGHTS.map(row => [...row]);
+    const corners = [[0,0],[0,7],[7,0],[7,7]];
+    const adj = [
+        [[0,1],[1,0],[1,1]],
+        [[0,6],[1,7],[1,6]],
+        [[7,1],[6,0],[6,1]],
+        [[7,6],[6,7],[6,6]],
+    ];
+    for (let i = 0; i < 4; i++) {
+        const [cr, cc] = corners[i];
+        if (b[cr][cc] !== 0) {
+            // Corner taken — adjacent cells are no longer risky
+            for (const [ar, ac_] of adj[i]) {
+                if (w[ar][ac_] < 0) w[ar][ac_] = Math.abs(w[ar][ac_]);
+            }
+        }
+    }
+    return w;
+}
+
+/** Evaluate board for the AI player. Higher = better for AI. */
+function evaluate(b) {
+    const { black, white } = countDiscs(b);
+    const totalDiscs = black + white;
+    const myDiscs  = aiPlayer === 1 ? black : white;
+    const oppDiscs = aiPlayer === 1 ? white : black;
+    const me  = aiPlayer;
+    const opp = 3 - aiPlayer;
+
+    // ── 1) Positional score (weighted squares)
+    const weights = getAdjustedWeights(b);
+    let posScore = 0;
+    for (let r = 0; r < N; r++)
+        for (let c = 0; c < N; c++) {
+            if (b[r][c] === me)  posScore += weights[r][c];
+            else if (b[r][c] === opp) posScore -= weights[r][c];
+        }
+
+    // ── 2) Mobility (number of moves available)
+    const myMoves  = validMoves(me, b).length;
+    const oppMoves = validMoves(opp, b).length;
+    let mobilityScore = 0;
+    if (myMoves + oppMoves > 0) {
+        mobilityScore = 100 * (myMoves - oppMoves) / (myMoves + oppMoves);
+    }
+
+    // ── 3) Corner occupancy
+    let myCorners = 0, oppCorners = 0;
+    for (const [cr, cc] of [[0,0],[0,7],[7,0],[7,7]]) {
+        if (b[cr][cc] === me)  myCorners++;
+        else if (b[cr][cc] === opp) oppCorners++;
+    }
+    const cornerScore = 25 * (myCorners - oppCorners);
+
+    // ── 4) Stability — count stable edge discs (simplified)
+    let stableScore = 0;
+    // Edges: stable discs that form unbroken chains from corners
+    const edges = [
+        { dr: 0, dc: 1, starts: [[0,0],[7,0]], ends: [[0,7],[7,7]] },
+        { dr: 1, dc: 0, starts: [[0,0],[0,7]], ends: [[7,0],[7,7]] },
+    ];
+    for (const { dr, dc, starts } of edges) {
+        for (const [sr, sc] of starts) {
+            let r = sr, c = sc;
+            while (r >= 0 && r < N && c >= 0 && c < N && b[r][c] !== 0) {
+                if (b[r][c] === me) stableScore += 4;
+                else stableScore -= 4;
+                r += dr; c += dc;
+            }
+        }
+    }
+
+    // ── 5) Disc parity (matters more in endgame)
+    let parityScore = 0;
+    if (totalDiscs > 50) {
+        // Near endgame: disc count matters more
+        parityScore = 100 * (myDiscs - oppDiscs) / (myDiscs + oppDiscs);
+    }
+
+    // ── Combine with phase-dependent weighting
+    const earlyGame = totalDiscs < 20;
+    const endGame   = totalDiscs > 50;
+
+    if (endGame) {
+        // Endgame: maximize disc count
+        return posScore * 0.5 + mobilityScore * 1 + cornerScore * 3 + stableScore * 2 + parityScore * 5;
+    } else if (earlyGame) {
+        // Early game: prioritize position and mobility
+        return posScore * 3 + mobilityScore * 4 + cornerScore * 5 + stableScore * 1;
+    } else {
+        // Mid game: balanced
+        return posScore * 2 + mobilityScore * 3 + cornerScore * 4 + stableScore * 2 + parityScore * 1;
+    }
+}
+
+/** Clone a board (array of Uint8Arrays). */
+function cloneBoard(b) {
+    return b.map(row => new Uint8Array(row));
+}
+
+/** Apply a move on a cloned board and return it. */
+function applyMove(b, r, c, player) {
+    const nb = cloneBoard(b);
+    const flips = getFlips(r, c, player, nb);
+    nb[r][c] = player;
+    for (const [fr, fc] of flips) nb[fr][fc] = player;
+    return nb;
+}
+
+/**
+ * Minimax with alpha-beta pruning.
+ * Returns [score, [r, c]].
+ */
+function minimax(b, depth, alpha, beta, maximizing, player) {
+    const moves = validMoves(player, b);
+    const opp   = 3 - player;
+    const oppMoves = validMoves(opp, b);
+
+    // Terminal or leaf node
+    if (depth === 0 || (moves.length === 0 && oppMoves.length === 0)) {
+        return [evaluate(b), null];
+    }
+
+    // Current player must pass
+    if (moves.length === 0) {
+        return minimax(b, depth - 1, alpha, beta, !maximizing, opp);
+    }
+
+    // Sort moves heuristically (corners first, then edges) for better pruning
+    const sortedMoves = moves.slice().sort((a, b_) => {
+        return POS_WEIGHTS[b_[0]][b_[1]] - POS_WEIGHTS[a[0]][a[1]];
+    });
+
+    let bestMove = sortedMoves[0];
+
+    if (maximizing) {
+        let maxEval = -Infinity;
+        for (const [r, c] of sortedMoves) {
+            const nb = applyMove(b, r, c, player);
+            const [score] = minimax(nb, depth - 1, alpha, beta, false, opp);
+            if (score > maxEval) {
+                maxEval = score;
+                bestMove = [r, c];
+            }
+            alpha = Math.max(alpha, score);
+            if (beta <= alpha) break;
+        }
+        return [maxEval, bestMove];
+    } else {
+        let minEval = Infinity;
+        for (const [r, c] of sortedMoves) {
+            const nb = applyMove(b, r, c, player);
+            const [score] = minimax(nb, depth - 1, alpha, beta, true, opp);
+            if (score < minEval) {
+                minEval = score;
+                bestMove = [r, c];
+            }
+            beta = Math.min(beta, score);
+            if (beta <= alpha) break;
+        }
+        return [minEval, bestMove];
+    }
+}
+
+/** Pick the best AI move. */
+function aiChooseMove() {
+    const depth = getAIDepth();
+    const [, move] = minimax(board, depth, -Infinity, Infinity, true, aiPlayer);
+    return move;
+}
+
+/* ═══════════════════════════════════════════════════════
+   AI Turn Handling
+═══════════════════════════════════════════════════════ */
+function setThinkingBar(active) {
+    document.getElementById('thinking-bar').classList.toggle('active', active);
+}
+
+function isAITurn() {
+    return gameMode === 'pvai' && curPlayer === aiPlayer && !gameOver;
+}
+
+function triggerAITurn() {
+    if (!isAITurn()) return;
+
+    aiThinking = true;
+    setThinkingBar(true);
+    draw(); // redraw to hide hints during AI turn
+
+    // Small delay so the UI feels natural
+    const delay = 350 + Math.random() * 400;
+    setTimeout(() => {
+        if (!isAITurn()) {
+            aiThinking = false;
+            setThinkingBar(false);
+            return;
+        }
+
+        const move = aiChooseMove();
+        aiThinking = false;
+        setThinkingBar(false);
+
+        if (move) {
+            place(move[0], move[1]);
+            // If after placing, the AI still has the turn (opponent passed), go again
+            if (isAITurn()) {
+                triggerAITurn();
+            }
+        }
+    }, delay);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -450,6 +830,10 @@ function updateHUD() {
     const st = document.getElementById('status-text');
     if (skipMsg) {
         st.textContent = skipMsg;
+    } else if (gameMode === 'pvai' && curPlayer === aiPlayer) {
+        st.textContent = 'AI THINKING...';
+    } else if (gameMode === 'pvai') {
+        st.textContent = "YOUR TURN";
     } else {
         st.textContent = curPlayer === 1 ? "BLACK'S TURN" : "WHITE'S TURN";
     }
@@ -548,10 +932,9 @@ function draw() {
         ctx.fillRect(PAD + lc * CELL + 1, PAD + lr * CELL + 1, CELL - 2, CELL - 2);
     }
 
-    // ── Valid move indicators
-    if (!gameOver) {
+    // ── Valid move indicators (hide during AI turn)
+    if (!gameOver && !aiThinking) {
         const moves   = validMoves(curPlayer);
-        const validSet = new Set(moves.map(([r, c]) => `${r},${c}`));
 
         for (const [r, c] of moves) {
             const [x, y]  = cellCenter(r, c);
@@ -590,6 +973,7 @@ function boardCell(clientX, clientY) {
 }
 
 canvas.addEventListener('mousemove', e => {
+    if (aiThinking) return;
     const [r, c] = boardCell(e.clientX, e.clientY);
     if (r !== hoverR || c !== hoverC) { hoverR = r; hoverC = c; draw(); }
 });
@@ -599,17 +983,24 @@ canvas.addEventListener('mouseleave', () => {
 });
 
 canvas.addEventListener('click', e => {
-    if (gameOver) return;
+    if (gameOver || aiThinking) return;
     const [r, c] = boardCell(e.clientX, e.clientY);
-    if (r >= 0) place(r, c);
+    if (r >= 0) {
+        place(r, c);
+        // After human moves, check if it's AI's turn
+        if (isAITurn()) triggerAITurn();
+    }
 });
 
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
-    if (gameOver) return;
+    if (gameOver || aiThinking) return;
     const t      = e.changedTouches[0];
     const [r, c] = boardCell(t.clientX, t.clientY);
-    if (r >= 0) place(r, c);
+    if (r >= 0) {
+        place(r, c);
+        if (isAITurn()) triggerAITurn();
+    }
 }, { passive: false });
 
 /* ── Keyboard shortcuts ──────────────────────────── */
@@ -630,13 +1021,28 @@ function toggleMute() {
 
 document.getElementById('newGameBtn').addEventListener('click', () => {
     document.getElementById('overlay').classList.remove('show');
+    // Show mode selection again
+    document.getElementById('mode-select').classList.remove('hidden');
+    gameMode = null;
+});
+
+/* ── Mode Selection ──────────────────────────────── */
+function startGame(mode) {
+    gameMode = mode;
+    document.getElementById('mode-select').classList.add('hidden');
     initBoard();
     updateHUD();
     draw();
-});
+
+    // In PvAI, if AI goes first (shouldn't happen since black=human), trigger AI
+    if (isAITurn()) triggerAITurn();
+}
+
+document.getElementById('mode-pvp').addEventListener('click', () => startGame('pvp'));
+document.getElementById('mode-pvai').addEventListener('click', () => startGame('pvai'));
 
 /* ═══════════════════════════════════════════════════════
-   Boot
+   Boot — show mode selection, don't start game yet
 ═══════════════════════════════════════════════════════ */
 initBoard();
 updateHUD();
