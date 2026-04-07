@@ -7,12 +7,45 @@ const DIFFICULTY_KEY = 'arcade_difficulty';
 const DIFFICULTY_LEVELS = ['easy', 'normal', 'hard'];
 const DEFAULT_DIFFICULTY = 'normal';
 
+/* ── Safe storage wrapper ─────────────────────────────── */
+// Falls back to in-memory storage when localStorage is blocked
+// (e.g. cross-origin iframes in Firefox).
+
+const _mem = new Map();
+
+function _storageAvailable() {
+    try {
+        const k = '__storage_test__';
+        localStorage.setItem(k, '1');
+        localStorage.removeItem(k);
+        return true;
+    } catch { return false; }
+}
+
+const _useLocal = _storageAvailable();
+
+function _getItem(key) {
+    if (_useLocal) {
+        try { return localStorage.getItem(key); }
+        catch { /* fall through */ }
+    }
+    return _mem.get(key) ?? null;
+}
+
+function _setItem(key, value) {
+    if (_useLocal) {
+        try { localStorage.setItem(key, value); return; }
+        catch { /* fall through */ }
+    }
+    _mem.set(key, value);
+}
+
 /**
  * Get the current difficulty level from localStorage
  * @returns {string} Current difficulty level ('easy', 'normal', or 'hard')
  */
 export function getDifficulty() {
-    const stored = localStorage.getItem(DIFFICULTY_KEY);
+    const stored = _getItem(DIFFICULTY_KEY);
     if (stored && DIFFICULTY_LEVELS.includes(stored)) {
         return stored;
     }
@@ -29,7 +62,7 @@ export function setDifficulty(level) {
         console.error(`Invalid difficulty level: ${level}`);
         return false;
     }
-    localStorage.setItem(DIFFICULTY_KEY, level);
+    _setItem(DIFFICULTY_KEY, level);
     return true;
 }
 

@@ -9,15 +9,56 @@
 const STORAGE_KEY  = 'arcade_scores';
 const MAX_PER_GAME = 5;
 
+/* ── Safe storage wrapper ─────────────────────────────── */
+// Falls back to in-memory storage when localStorage is blocked
+// (e.g. cross-origin iframes in Firefox).
+
+const _mem = new Map();
+
+function _storageAvailable() {
+    try {
+        const k = '__storage_test__';
+        localStorage.setItem(k, '1');
+        localStorage.removeItem(k);
+        return true;
+    } catch { return false; }
+}
+
+const _useLocal = _storageAvailable();
+
+function _getItem(key) {
+    if (_useLocal) {
+        try { return localStorage.getItem(key); }
+        catch { /* fall through */ }
+    }
+    return _mem.get(key) ?? null;
+}
+
+function _setItem(key, value) {
+    if (_useLocal) {
+        try { localStorage.setItem(key, value); return; }
+        catch { /* fall through */ }
+    }
+    _mem.set(key, value);
+}
+
+function _removeItem(key) {
+    if (_useLocal) {
+        try { localStorage.removeItem(key); return; }
+        catch { /* fall through */ }
+    }
+    _mem.delete(key);
+}
+
 /* ── Storage helpers ───────────────────────────────────── */
 
 function load() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+    try { return JSON.parse(_getItem(STORAGE_KEY) || '{}'); }
     catch { return {}; }
 }
 
 function persist(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    _setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
 /* ── Public API ────────────────────────────────────────── */
@@ -69,7 +110,7 @@ export function saveScore(game, score, difficulty) {
  * Wipe all scores from localStorage.
  */
 export function clearAllScores() {
-    localStorage.removeItem(STORAGE_KEY);
+    _removeItem(STORAGE_KEY);
 }
 
 /* ── Celebration helpers ────────────────────────────────── */
