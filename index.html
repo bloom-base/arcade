@@ -740,6 +740,41 @@ const froggerPixels = [
     [0,2,FG],[0,5,'#fbbf24'],[0,8,FG],[0,11,FG],[0,14,FG],
 ];
 
+const contraPixels = [
+    // Sky background (dark blue, rows 0-6)
+    // Mountains silhouette (rows 3-5)
+    [3,0,'#1a0a2e'],[3,1,'#1a0a2e'],[3,2,'#1a0a2e'],[3,3,'#1a0a2e'],[3,4,'#1a0a2e'],
+    [4,1,'#1a0a2e'],[4,2,'#1a0a2e'],[4,3,'#1a0a2e'],
+    [3,10,'#1a0a2e'],[3,11,'#1a0a2e'],[3,12,'#1a0a2e'],[3,13,'#1a0a2e'],
+    [4,11,'#1a0a2e'],[4,12,'#1a0a2e'],
+    // Ground (rows 7-9)
+    ...[7,8,9].flatMap(r => Array.from({length:16}, (_,c) => [r, c, '#2a1a0a'])),
+    [7,0,'#4a3520'],[7,1,'#4a3520'],[7,2,'#4a3520'],[7,3,'#4a3520'],[7,4,'#4a3520'],
+    [7,5,'#4a3520'],[7,6,'#4a3520'],[7,7,'#4a3520'],[7,8,'#4a3520'],[7,9,'#4a3520'],
+    [7,10,'#4a3520'],[7,11,'#4a3520'],[7,12,'#4a3520'],[7,13,'#4a3520'],[7,14,'#4a3520'],[7,15,'#4a3520'],
+    // Player (red, running pose)
+    [5,3,'#f97066'],[5,4,'#f97066'], // head
+    [6,3,'#e74c3c'],[6,4,'#e74c3c'], // body
+    [6,5,'#aaa'],                     // gun
+    [7,3,'#a33'],[7,4,'#a33'],        // legs (on ground row, drawn over)
+    // Headband trail
+    [5,2,'#e74c3c'],
+    // Bullets
+    [6,7,'#ff0'],[6,9,'#ff0'],[6,11,'#ff0'],
+    // Enemy runner (green)
+    [5,13,'#2ecc71'],[5,14,'#2ecc71'], // head
+    [6,13,'#27ae60'],[6,14,'#27ae60'], // body
+    // Flyer enemy (orange, top)
+    [2,8,'#e67e22'],[2,9,'#e67e22'],[2,10,'#e67e22'],
+    [1,9,'#d35400'],
+    // Enemy bullet
+    [4,12,'#f0f'],
+    // Platform
+    [5,7,'#5a4530'],[5,8,'#5a4530'],[5,9,'#5a4530'],
+    // Explosion
+    [5,14,'#f39c12'],[6,15,'#f39c12'],
+];
+
 const GAMES = [
     {
         name: 'SNAKE',
@@ -852,6 +887,14 @@ const GAMES = [
         color: '#4ade80',
         glow:  'rgba(74,222,128,0.35)',
         pixels: froggerPixels,
+    },
+    {
+        name: 'CONTRA',
+        desc: 'Run, gun, and blast your way through enemy forces.',
+        href: 'games/contra/index.html',
+        color: '#e74c3c',
+        glow:  'rgba(231,76,60,0.35)',
+        pixels: contraPixels,
     },
 ];
 
