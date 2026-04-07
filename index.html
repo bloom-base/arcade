@@ -689,6 +689,29 @@ const excitebikePixels = [
     ...Array.from({length:15},(_,c) => [9, c, '#4a3728']),
 ];
 
+// Asteroids — triangular ship and jagged asteroid outlines on dark space
+const AS = '#0ff', AD = '#066';
+const asteroidsPixels = [
+    // Ship (triangle pointing right, center-left area)
+    [5,3,AS],[4,2,AS],[6,2,AS],[4,1,AS],[6,1,AS],[5,1,AD],
+    // Thrust flame
+    [5,0,'#f97316'],
+    // Bullets
+    [5,5,AS],[5,7,'#fff'],[5,9,'#fff'],
+    // Large asteroid (top-right area)
+    [1,10,AS],[0,11,AS],[0,12,AS],[0,13,AS],[1,14,AS],[2,14,AS],[3,13,AS],[3,12,AS],[3,11,AS],[2,10,AS],
+    [1,11,AD],[1,12,AD],[2,12,AD],[2,11,AD],
+    // Medium asteroid (bottom-right)
+    [7,12,AS],[6,13,AS],[7,14,AS],[8,14,AS],[9,13,AS],[8,12,AS],
+    [7,13,AD],[8,13,AD],
+    // Small asteroid (middle)
+    [7,7,AS],[6,8,AS],[7,9,AS],[8,8,AS],
+    // Explosion particles
+    [4,11,'#f97316'],[2,9,'#f97316'],[8,10,'#ff4444'],
+    // Stars
+    [0,2,'#333'],[3,6,'#333'],[9,1,'#333'],[1,8,'#333'],[8,4,'#333'],
+];
+
 const GAMES = [
     {
         name: 'SNAKE',
@@ -785,6 +808,14 @@ const GAMES = [
         color: '#f97316',
         glow:  'rgba(249,115,22,0.35)',
         pixels: excitebikePixels,
+    },
+    {
+        name: 'ASTEROIDS',
+        desc: 'Blast space rocks before they smash your ship.',
+        href: 'games/asteroids/index.html',
+        color: '#0ff',
+        glow:  'rgba(0,255,255,0.35)',
+        pixels: asteroidsPixels,
     },
 ];
 
