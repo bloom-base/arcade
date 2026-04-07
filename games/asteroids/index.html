@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Asteroids — Arcade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#fafafa;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Press Start 2P',monospace;overflow:hidden;user-select:none}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(0,0,0,0.07) 3px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:100}
+
+.back-btn{position:fixed;top:1.25rem;left:1.25rem;font-family:'Press Start 2P',monospace;font-size:.5rem;color:#444;text-decoration:none;background:transparent;border:1px solid #2a2a2a;padding:.5rem .875rem;cursor:pointer;z-index:50;transition:color .15s,border-color .15s}
+.back-btn:hover{color:#0ff;border-color:#0ff}
+.mute-btn{position:fixed;top:1.25rem;right:1.25rem;font-family:'Press Start 2P',monospace;font-size:.5rem;color:#444;background:transparent;border:1px solid #2a2a2a;padding:.5rem .875rem;cursor:pointer;z-index:50;transition:color .15s,border-color .15s}
+.mute-btn:hover{color:#0ff;border-color:#0ff}
+.mute-btn.muted{color:#ef4444;border-color:#7f1d1d}
+
+#game-wrap{display:flex;flex-direction:column;align-items:center;gap:.75rem;padding:1rem}
+#title{font-size:clamp(.65rem,3vw,1rem);letter-spacing:.25em;color:#0ff;text-shadow:0 0 24px rgba(0,255,255,0.55);margin-bottom:.25rem}
+#hud{display:flex;gap:2rem;font-size:clamp(.4rem,1.5vw,.55rem);color:#0ff;opacity:.85}
+canvas{display:block;image-rendering:pixelated;border:1px solid #1a1a1a;border-radius:4px}
+#controls-hint{font-size:.35rem;color:#333;text-align:center;line-height:1.8;margin-top:.5rem}
+
+/* Mobile touch controls */
+#touch-controls{display:none;position:fixed;bottom:1rem;left:0;right:0;z-index:40;padding:0 1rem}
+#touch-controls .row{display:flex;justify-content:space-between;align-items:center}
+.touch-btn{width:3.5rem;height:3.5rem;border-radius:50%;border:2px solid rgba(0,255,255,0.3);background:rgba(0,255,255,0.08);color:rgba(0,255,255,0.6);font-family:'Press Start 2P',monospace;font-size:.6rem;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.touch-btn:active{background:rgba(0,255,255,0.25);border-color:rgba(0,255,255,0.6)}
+.touch-btn.fire{width:4.5rem;height:4.5rem;border-color:rgba(255,80,80,0.4);background:rgba(255,80,80,0.08);color:rgba(255,80,80,0.6)}
+.touch-btn.fire:active{background:rgba(255,80,80,0.25)}
+@media (pointer:coarse){#touch-controls{display:block}#controls-hint{display:none}}
+
+/* Overlay */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity .35s ease}
+#overlay.show{opacity:1;pointer-events:auto}
+#overlay h2{font-size:clamp(.7rem,3vw,1.2rem);color:#0ff;margin-bottom:1.5rem;text-shadow:0 0 20px rgba(0,255,255,0.5)}
+#overlay .final-score{font-size:clamp(.5rem,2vw,.75rem);color:#ccc;margin-bottom:.5rem}
+#overlay .high-score{font-size:clamp(.4rem,1.5vw,.55rem);color:#facc15;margin-bottom:1.5rem}
+.overlay-btn{font-family:'Press Start 2P',monospace;font-size:.5rem;color:#0ff;background:transparent;border:1px solid #0ff;padding:.625rem 1.25rem;cursor:pointer;margin:.35rem;transition:background .15s,color .15s}
+.overlay-btn:hover{background:#0ff;color:#0a0a0a}
+
+/* Start screen */
+#start-screen{position:fixed;inset:0;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;transition:opacity .35s ease}
+#start-screen.hidden{opacity:0;pointer-events:none}
+#start-screen h1{font-size:clamp(.9rem,4vw,1.6rem);color:#0ff;text-shadow:0 0 30px rgba(0,255,255,0.6);margin-bottom:1.5rem;letter-spacing:.15em}
+#start-screen .sub{font-size:.4rem;color:#666;margin-bottom:2rem;line-height:2}
+</style>
+</head>
+<body>
+<a class="back-btn" href="../../index.html#games">← BACK</a>
+<button class="mute-btn" id="muteBtn">♪ SFX</button>
+
+<div id="game-wrap">
+    <div id="title">ASTEROIDS</div>
+    <div id="hud">
+        <span>SCORE <span id="scoreVal">0</span></span>
+        <span>LIVES <span id="livesVal">3</span></span>
+        <span>WAVE <span id="waveVal">1</span></span>
+    </div>
+    <canvas id="canvas"></canvas>
+    <div id="controls-hint">← → ROTATE &nbsp; ↑ THRUST &nbsp; SPACE SHOOT</div>
+</div>
+
+<div id="touch-controls">
+    <div class="row">
+        <div style="display:flex;gap:.75rem">
+            <button class="touch-btn" id="tb-left">◄</button>
+            <button class="touch-btn" id="tb-right">►</button>
+        </div>
+        <button class="touch-btn fire" id="tb-fire">FIRE</button>
+        <button class="touch-btn" id="tb-thrust">▲</button>
+    </div>
+</div>
+
+<div id="start-screen">
+    <h1>ASTEROIDS</h1>
+    <div class="sub">PRESS ANY KEY OR TAP TO START</div>
+</div>
+
+<div id="overlay">
+    <h2>GAME OVER</h2>
+    <div class="final-score" id="finalScore">SCORE: 0</div>
+    <div class="high-score" id="highScore"></div>
+    <div>
+        <button class="overlay-btn" id="retryBtn">RETRY</button>
+        <button class="overlay-btn" onclick="location.href='../../index.html#games'">MENU</button>
+    </div>
+</div>
+
+<script type="module">
+import { saveScore, showHighScoreBanner, playHighScoreChime } from '../../utils/scores.js';
+
+/* ── Canvas setup ─────────────────────────────────────── */
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const CW = 800, CH = 600;
+canvas.width = CW; canvas.height = CH;
+
+function resize() {
+    const maxW = window.innerWidth - 32;
+    const maxH = window.innerHeight - 160;
+    const s = Math.min(maxW / CW, maxH / CH, 1.2);
+    canvas.style.width = (CW * s) + 'px';
+    canvas.style.height = (CH * s) + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+/* ── Audio ────────────────────────────────────────────── */
+let muted = false;
+let audioCtx = null;
+function getAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+function tone(freq, type, dur, vol = 0.15, delay = 0) {
+    if (muted) return;
+    try {
+        const c = getAudio();
+        const o = c.createOscillator();
+        const g = c.createGain();
+        o.connect(g); g.connect(c.destination);
+        o.type = type;
+        o.frequency.setValueAtTime(freq, c.currentTime + delay);
+        g.gain.setValueAtTime(vol, c.currentTime + delay);
+        g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + delay + dur);
+        o.start(c.currentTime + delay);
+        o.stop(c.currentTime + delay + dur + 0.01);
+    } catch (_) {}
+}
+function noise(dur, vol = 0.1) {
+    if (muted) return;
+    try {
+        const c = getAudio();
+        const bufSize = c.sampleRate * dur;
+        const buf = c.createBuffer(1, bufSize, c.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * vol;
+        const src = c.createBufferSource();
+        const g = c.createGain();
+        src.buffer = buf;
+        src.connect(g); g.connect(c.destination);
+        g.gain.setValueAtTime(vol, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+        src.start(); src.stop(c.currentTime + dur + 0.01);
+    } catch (_) {}
+}
+const sfx = {
+    shoot: () => tone(800, 'square', 0.08, 0.1),
+    thrust: () => tone(60, 'sawtooth', 0.08, 0.06),
+    explodeSmall: () => noise(0.15, 0.12),
+    explodeMed: () => noise(0.25, 0.15),
+    explodeLarge: () => noise(0.4, 0.2),
+    death: () => { [200,150,100,60].forEach((f,i) => tone(f,'sawtooth',0.2,0.2,i*0.12)); },
+    newLife: () => { [523,659,784].forEach((f,i) => tone(f,'square',0.12,0.15,i*0.1)); },
+};
+
+document.getElementById('muteBtn').addEventListener('click', () => {
+    muted = !muted;
+    const btn = document.getElementById('muteBtn');
+    btn.textContent = muted ? '✕ SFX' : '♪ SFX';
+    btn.classList.toggle('muted', muted);
+});
+
+/* ── Input ────────────────────────────────────────────── */
+const keys = {};
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// Touch controls
+const touch = { left: false, right: false, thrust: false, fire: false };
+function bindTouch(id, key) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('touchstart', e => { e.preventDefault(); touch[key] = true; });
+    el.addEventListener('touchend', e => { e.preventDefault(); touch[key] = false; });
+    el.addEventListener('touchcancel', e => { touch[key] = false; });
+}
+bindTouch('tb-left', 'left');
+bindTouch('tb-right', 'right');
+bindTouch('tb-thrust', 'thrust');
+bindTouch('tb-fire', 'fire');
+
+function isKey(action) {
+    switch (action) {
+        case 'left':    return keys['ArrowLeft'] || keys['KeyA'] || touch.left;
+        case 'right':   return keys['ArrowRight'] || keys['KeyD'] || touch.right;
+        case 'thrust':  return keys['ArrowUp'] || keys['KeyW'] || touch.thrust;
+        case 'fire':    return keys['Space'] || touch.fire;
+    }
+}
+
+/* ── Game constants ───────────────────────────────────── */
+const SHIP_SIZE = 16;
+const TURN_SPEED = 0.07;
+const THRUST_POWER = 0.12;
+const FRICTION = 0.992;
+const MAX_SPEED = 7;
+const BULLET_SPEED = 8;
+const BULLET_LIFE = 55;
+const FIRE_RATE = 8; // frames between shots
+const ASTEROID_SPEED_BASE = 1.0;
+const INVINCIBLE_TIME = 150; // frames
+const INITIAL_LIVES = 3;
+const POINTS = { large: 20, medium: 50, small: 100 };
+const ASTEROID_SIZES = { large: 40, medium: 20, small: 10 };
+const ASTEROID_VERTS_RANGE = { large: [8, 12], medium: [7, 10], small: [5, 8] };
+
+/* ── Game state ───────────────────────────────────────── */
+let ship, bullets, asteroids, particles, score, lives, wave, gameOver, started;
+let fireTimer, invincibleTimer, rafId, lastTs;
+let thrustFrame = 0;
+
+function makeShip() {
+    return {
+        x: CW / 2, y: CH / 2,
+        angle: -Math.PI / 2,
+        dx: 0, dy: 0,
+        thrusting: false,
+    };
+}
+
+function makeAsteroid(x, y, size, speedMult) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = (ASTEROID_SPEED_BASE + Math.random() * 0.8) * speedMult;
+    const r = ASTEROID_SIZES[size];
+    const [minV, maxV] = ASTEROID_VERTS_RANGE[size];
+    const numVerts = minV + Math.floor(Math.random() * (maxV - minV));
+    const verts = [];
+    for (let i = 0; i < numVerts; i++) {
+        const a = (i / numVerts) * Math.PI * 2;
+        const jitter = 0.7 + Math.random() * 0.6;
+        verts.push({ a, r: r * jitter });
+    }
+    return { x, y, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, r, size, verts, rot: Math.random() * Math.PI * 2, rotSpeed: (Math.random() - 0.5) * 0.02 };
+}
+
+function spawnWave(waveNum) {
+    const count = 3 + waveNum;
+    const speedMult = 1 + (waveNum - 1) * 0.15;
+    const newAsteroids = [];
+    for (let i = 0; i < count; i++) {
+        let x, y;
+        // Spawn away from ship
+        do {
+            x = Math.random() * CW;
+            y = Math.random() * CH;
+        } while (dist(x, y, ship.x, ship.y) < 150);
+        newAsteroids.push(makeAsteroid(x, y, 'large', speedMult));
+    }
+    return newAsteroids;
+}
+
+function spawnParticles(x, y, count, color, speedMult = 1) {
+    for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = (0.5 + Math.random() * 3) * speedMult;
+        particles.push({
+            x, y,
+            dx: Math.cos(angle) * speed,
+            dy: Math.sin(angle) * speed,
+            life: 20 + Math.random() * 30,
+            maxLife: 20 + Math.random() * 30,
+            color,
+            size: 1 + Math.random() * 2,
+        });
+    }
+}
+
+function initGame() {
+    ship = makeShip();
+    bullets = [];
+    asteroids = [];
+    particles = [];
+    score = 0;
+    lives = INITIAL_LIVES;
+    wave = 1;
+    gameOver = false;
+    fireTimer = 0;
+    invincibleTimer = INVINCIBLE_TIME;
+    asteroids = spawnWave(wave);
+    updateHud();
+}
+
+/* ── Helpers ──────────────────────────────────────────── */
+function dist(x1, y1, x2, y2) {
+    return Math.hypot(x2 - x1, y2 - y1);
+}
+
+function wrap(obj) {
+    if (obj.x < -50) obj.x += CW + 100;
+    if (obj.x > CW + 50) obj.x -= CW + 100;
+    if (obj.y < -50) obj.y += CH + 100;
+    if (obj.y > CH + 50) obj.y -= CH + 100;
+}
+
+function updateHud() {
+    document.getElementById('scoreVal').textContent = score;
+    document.getElementById('livesVal').textContent = lives;
+    document.getElementById('waveVal').textContent = wave;
+}
+
+/* ── High score ───────────────────────────────────────── */
+function getHighScore() {
+    try { return parseInt(localStorage.getItem('asteroids_high') || '0', 10); }
+    catch { return 0; }
+}
+function setHighScore(s) {
+    try { localStorage.setItem('asteroids_high', s); } catch {}
+}
+
+/* ── Update ───────────────────────────────────────────── */
+function update(dt) {
+    if (gameOver) return;
+
+    // Ship rotation
+    if (isKey('left')) ship.angle -= TURN_SPEED * dt;
+    if (isKey('right')) ship.angle += TURN_SPEED * dt;
+
+    // Thrust
+    ship.thrusting = isKey('thrust');
+    if (ship.thrusting) {
+        ship.dx += Math.cos(ship.angle) * THRUST_POWER * dt;
+        ship.dy += Math.sin(ship.angle) * THRUST_POWER * dt;
+        const spd = Math.hypot(ship.dx, ship.dy);
+        if (spd > MAX_SPEED) { ship.dx *= MAX_SPEED / spd; ship.dy *= MAX_SPEED / spd; }
+        thrustFrame++;
+        if (thrustFrame % 3 === 0) sfx.thrust();
+    } else {
+        thrustFrame = 0;
+    }
+
+    // Ship movement
+    ship.dx *= Math.pow(FRICTION, dt);
+    ship.dy *= Math.pow(FRICTION, dt);
+    ship.x += ship.dx * dt;
+    ship.y += ship.dy * dt;
+    wrap(ship);
+
+    // Invincibility countdown
+    if (invincibleTimer > 0) invincibleTimer -= dt;
+
+    // Firing
+    if (fireTimer > 0) fireTimer -= dt;
+    if (isKey('fire') && fireTimer <= 0) {
+        bullets.push({
+            x: ship.x + Math.cos(ship.angle) * SHIP_SIZE,
+            y: ship.y + Math.sin(ship.angle) * SHIP_SIZE,
+            dx: Math.cos(ship.angle) * BULLET_SPEED + ship.dx * 0.3,
+            dy: Math.sin(ship.angle) * BULLET_SPEED + ship.dy * 0.3,
+            life: BULLET_LIFE,
+        });
+        sfx.shoot();
+        fireTimer = FIRE_RATE;
+    }
+
+    // Update bullets
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.dx * dt;
+        b.y += b.dy * dt;
+        b.life -= dt;
+        wrap(b);
+        if (b.life <= 0) bullets.splice(i, 1);
+    }
+
+    // Update asteroids
+    for (const a of asteroids) {
+        a.x += a.dx * dt;
+        a.y += a.dy * dt;
+        a.rot += a.rotSpeed * dt;
+        wrap(a);
+    }
+
+    // Bullet-asteroid collisions
+    for (let bi = bullets.length - 1; bi >= 0; bi--) {
+        const b = bullets[bi];
+        for (let ai = asteroids.length - 1; ai >= 0; ai--) {
+            const a = asteroids[ai];
+            if (dist(b.x, b.y, a.x, a.y) < a.r) {
+                // Hit!
+                bullets.splice(bi, 1);
+                asteroids.splice(ai, 1);
+                score += POINTS[a.size];
+
+                // Break into smaller asteroids
+                const speedMult = 1 + (wave - 1) * 0.15;
+                if (a.size === 'large') {
+                    asteroids.push(makeAsteroid(a.x, a.y, 'medium', speedMult * 1.2));
+                    asteroids.push(makeAsteroid(a.x, a.y, 'medium', speedMult * 1.2));
+                    spawnParticles(a.x, a.y, 12, '#0ff', 1.2);
+                    sfx.explodeLarge();
+                } else if (a.size === 'medium') {
+                    asteroids.push(makeAsteroid(a.x, a.y, 'small', speedMult * 1.4));
+                    asteroids.push(makeAsteroid(a.x, a.y, 'small', speedMult * 1.4));
+                    spawnParticles(a.x, a.y, 8, '#0ff');
+                    sfx.explodeMed();
+                } else {
+                    spawnParticles(a.x, a.y, 6, '#0ff', 0.8);
+                    sfx.explodeSmall();
+                }
+
+                updateHud();
+                break;
+            }
+        }
+    }
+
+    // Ship-asteroid collision
+    if (invincibleTimer <= 0) {
+        for (let ai = asteroids.length - 1; ai >= 0; ai--) {
+            const a = asteroids[ai];
+            if (dist(ship.x, ship.y, a.x, a.y) < a.r + SHIP_SIZE * 0.7) {
+                // Ship hit
+                spawnParticles(ship.x, ship.y, 20, '#ff4444', 1.5);
+                spawnParticles(ship.x, ship.y, 10, '#ffaa00');
+                sfx.death();
+                lives--;
+                updateHud();
+                if (lives <= 0) {
+                    endGame();
+                    return;
+                }
+                // Respawn
+                ship = makeShip();
+                invincibleTimer = INVINCIBLE_TIME;
+                break;
+            }
+        }
+    }
+
+    // Update particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.dx * dt;
+        p.y += p.dy * dt;
+        p.life -= dt;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    // Wave cleared — spawn next
+    if (asteroids.length === 0) {
+        wave++;
+        updateHud();
+        asteroids = spawnWave(wave);
+        // Bonus life every 3 waves
+        if (wave % 3 === 1 && wave > 1 && lives < 5) {
+            lives++;
+            updateHud();
+            sfx.newLife();
+        }
+    }
+}
+
+function endGame() {
+    gameOver = true;
+    document.getElementById('finalScore').textContent = `SCORE: ${score}`;
+    const hi = getHighScore();
+    if (score > hi) {
+        setHighScore(score);
+        document.getElementById('highScore').textContent = `★ NEW HIGH SCORE ★`;
+    } else {
+        document.getElementById('highScore').textContent = `HIGH SCORE: ${hi}`;
+    }
+    const rank = saveScore('asteroids', score);
+    if (rank > 0) {
+        playHighScoreChime(muted);
+        showHighScoreBanner(rank);
+    }
+    document.getElementById('overlay').classList.add('show');
+}
+
+/* ── Draw ─────────────────────────────────────────────── */
+function draw() {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, CW, CH);
+
+    // Faint star field (static, just dots)
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    for (let i = 0; i < 60; i++) {
+        const sx = (i * 137.5 + 50) % CW;
+        const sy = (i * 97.3 + 30) % CH;
+        ctx.fillRect(sx, sy, 1, 1);
+    }
+
+    if (!gameOver) {
+        drawShip();
+    }
+
+    // Bullets
+    ctx.fillStyle = '#fff';
+    for (const b of bullets) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Asteroids
+    for (const a of asteroids) {
+        drawAsteroid(a);
+    }
+
+    // Particles
+    for (const p of particles) {
+        const alpha = p.life / p.maxLife;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+}
+
+function drawShip() {
+    // Blink when invincible
+    if (invincibleTimer > 0 && Math.floor(invincibleTimer / 5) % 2 === 0) return;
+
+    ctx.save();
+    ctx.translate(ship.x, ship.y);
+    ctx.rotate(ship.angle);
+
+    // Ship body
+    ctx.strokeStyle = '#0ff';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#0ff';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(SHIP_SIZE, 0);
+    ctx.lineTo(-SHIP_SIZE * 0.7, -SHIP_SIZE * 0.6);
+    ctx.lineTo(-SHIP_SIZE * 0.4, 0);
+    ctx.lineTo(-SHIP_SIZE * 0.7, SHIP_SIZE * 0.6);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Thrust flame
+    if (ship.thrusting) {
+        const flicker = 0.6 + Math.random() * 0.6;
+        ctx.strokeStyle = '#ff6600';
+        ctx.shadowColor = '#ff6600';
+        ctx.shadowBlur = 10;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-SHIP_SIZE * 0.5, -SHIP_SIZE * 0.25);
+        ctx.lineTo(-SHIP_SIZE * (0.7 + flicker * 0.5), 0);
+        ctx.lineTo(-SHIP_SIZE * 0.5, SHIP_SIZE * 0.25);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+    ctx.shadowBlur = 0;
+}
+
+function drawAsteroid(a) {
+    ctx.save();
+    ctx.translate(a.x, a.y);
+    ctx.rotate(a.rot);
+    ctx.strokeStyle = '#0ff';
+    ctx.lineWidth = 1.2;
+    ctx.shadowColor = '#0ff';
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    for (let i = 0; i < a.verts.length; i++) {
+        const v = a.verts[i];
+        const px = Math.cos(v.a) * v.r;
+        const py = Math.sin(v.a) * v.r;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+    ctx.shadowBlur = 0;
+}
+
+/* ── Game loop ────────────────────────────────────────── */
+function loop(ts) {
+    const delta = Math.min((ts - lastTs) / 16.667, 3);
+    lastTs = ts;
+    update(delta);
+    draw();
+    rafId = requestAnimationFrame(loop);
+}
+
+/* ── Start / Retry ────────────────────────────────────── */
+const startScreen = document.getElementById('start-screen');
+started = false;
+
+function startGame() {
+    if (started) return;
+    started = true;
+    startScreen.classList.add('hidden');
+    document.getElementById('overlay').classList.remove('show');
+    initGame();
+    lastTs = performance.now();
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(loop);
+}
+
+function retry() {
+    document.getElementById('overlay').classList.remove('show');
+    initGame();
+    lastTs = performance.now();
+}
+
+// Start on any key or tap
+window.addEventListener('keydown', () => startGame(), { once: false });
+startScreen.addEventListener('click', () => startGame());
+startScreen.addEventListener('touchstart', () => startGame());
+
+// Only start once from key
+let startedFromKey = false;
+window.addEventListener('keydown', function handler() {
+    if (!started) { startGame(); startedFromKey = true; }
+});
+
+document.getElementById('retryBtn').addEventListener('click', retry);
+
+</script>
+</body>
+</html>
