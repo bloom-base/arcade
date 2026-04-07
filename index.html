@@ -659,6 +659,36 @@ const towerDefPixels = [
     [9,3,'#a855f7'],[9,4,'#a855f7'],[9,5,'#a855f7'],
 ];
 
+// Excitebike — side-scrolling motorcycle on dirt track
+const EB_O = '#f97316', EB_T = '#8B7355', EB_S = '#0f0f23', EB_W = '#f0f0f0', EB_D = '#5C4A30';
+const excitebikePixels = [
+    // Sky (rows 0-3)
+    ...[0,1,2,3].flatMap(r => Array.from({length:15},(_,c) => [r, c, EB_S])),
+    // Mountains
+    [2,2,'#16213e'],[2,3,'#16213e'],[1,3,'#16213e'],
+    [2,8,'#16213e'],[2,9,'#16213e'],[1,9,'#16213e'],
+    [2,12,'#16213e'],[2,13,'#16213e'],[1,13,'#16213e'],
+    // Track surface (rows 4-8)
+    ...[4,5,6,7,8].flatMap(r => Array.from({length:15},(_,c) => [r, c, EB_T])),
+    // Lane dividers
+    ...[0,2,4,6,8,10,12,14].map(c => [5, c, EB_D]),
+    ...[0,2,4,6,8,10,12,14].map(c => [7, c, EB_D]),
+    // Track borders (white)
+    ...Array.from({length:15},(_,c) => [4, c, EB_W]),
+    ...Array.from({length:15},(_,c) => [8, c, EB_W]),
+    // Ramp
+    [6,9,'#e8b88a'],[5,10,'#e8b88a'],[6,10,'#d4a574'],
+    // Rider (orange bike + helmet)
+    [5,3,EB_O],[6,3,EB_O],[6,4,EB_O],
+    [5,2,'#ffd5a0'], // head
+    [5,4,'#222'],     // front wheel
+    [6,2,'#222'],     // rear wheel
+    // AI rider (red)
+    [6,7,'#ef4444'],[7,7,'#ef4444'],[7,8,'#222'],
+    // Ground (row 9)
+    ...Array.from({length:15},(_,c) => [9, c, '#4a3728']),
+];
+
 const GAMES = [
     {
         name: 'SNAKE',
@@ -747,6 +777,14 @@ const GAMES = [
         color: '#a855f7',
         glow:  'rgba(168,85,247,0.35)',
         pixels: towerDefPixels,
+    },
+    {
+        name: 'EXCITEBIKE',
+        desc: 'Race your motorbike, hit ramps, and manage your heat.',
+        href: 'games/excitebike/index.html',
+        color: '#f97316',
+        glow:  'rgba(249,115,22,0.35)',
+        pixels: excitebikePixels,
     },
 ];
 
