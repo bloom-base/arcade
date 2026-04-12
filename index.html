@@ -265,13 +265,70 @@
             line-height: 1.5;
         }
 
+        /* ── High-score badge on game cards ──────────── */
+        .card-best {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0.55rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.34rem;
+            letter-spacing: 0.12em;
+            color: #555;
+            transition: opacity 0.2s ease;
+        }
+        .card-best.has-score {
+            color: var(--color);
+            text-shadow: 0 0 8px var(--glow);
+        }
+        .card-best-icon {
+            font-size: 0.5rem;
+            line-height: 1;
+        }
+        .card-best-label {
+            opacity: 0.65;
+            color: #444;
+        }
+        .card-best.has-score .card-best-label {
+            opacity: 1;
+            color: inherit;
+        }
+        .card-best-value {
+            color: #fafafa;
+            text-shadow: 0 0 12px var(--glow), 0 0 4px var(--glow);
+        }
+        .card-best.no-score .card-best-value {
+            color: #333;
+            text-shadow: none;
+        }
+
+        /* ── Footer reset button ─────────────────────── */
+        .footer-reset-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.3rem;
+            color: #2a2a2a;
+            background: transparent;
+            border: 1px solid #1a1a1a;
+            padding: 0.35rem 0.7rem;
+            cursor: pointer;
+            letter-spacing: 0.1em;
+            transition: color 0.15s, border-color 0.15s;
+            margin-left: 0.75rem;
+        }
+        .footer-reset-btn:hover { color: #ef4444; border-color: #7f1d1d; }
+
         footer {
             position: fixed;
             bottom: 1.25rem;
             font-size: 0.75rem;
             color: #d4d4d4;
         }
-        #game-footer { color: #2a2a2a; }
+        #game-footer {
+            color: #2a2a2a;
+            display: flex;
+            align-items: center;
+            gap: 0;
+        }
 
         /* ── Leaderboard widget ────────────────────────── */
         .leaderboard {
@@ -409,12 +466,12 @@
         </div>
     </div>
 
-    <footer id="game-footer">Powered by Bloom</footer>
+    <footer id="game-footer">Powered by Bloom <button class="footer-reset-btn" id="footerResetBtn">RESET SCORES</button></footer>
 </div>
 
 <script type="module">
 import { getDifficulty, setDifficulty } from './utils/difficulty.js';
-import { getAllScores, clearAllScores } from './utils/scores.js';
+import { getAllScores, getScores, clearAllScores } from './utils/scores.js';
 
 /* ── Pixel-art SVG renderer ──────────────────────────────────
    pixels: Array of [row, col, color]
@@ -809,6 +866,7 @@ const contraPixels = [
 const GAMES = [
     {
         name: 'SNAKE',
+        key: 'snake',
         desc: 'Eat, grow, and never bite yourself.',
         href: 'snake.html',
         color: '#22c55e',
@@ -817,6 +875,7 @@ const GAMES = [
     },
     {
         name: 'TETRIS',
+        key: 'tetris',
         desc: 'Stack blocks, clear lines, survive the speed.',
         href: 'tetris.html',
         color: '#22d3ee',
@@ -825,6 +884,7 @@ const GAMES = [
     },
     {
         name: 'BREAKOUT',
+        key: 'breakout',
         desc: 'Smash every brick before you run out of chances.',
         href: 'games/breakout/index.html',
         color: '#fbbf24',
@@ -833,6 +893,7 @@ const GAMES = [
     },
     {
         name: 'PONG',
+        key: 'pong',
         desc: 'The original arcade duel — two paddles, one ball.',
         href: 'games/pong/index.html',
         color: '#e879f9',
@@ -841,6 +902,7 @@ const GAMES = [
     },
     {
         name: 'OTHELLO',
+        key: 'othello',
         desc: 'Outflank your rival and flip the board to your color.',
         href: 'games/othello/index.html',
         color: '#4ade80',
@@ -849,6 +911,7 @@ const GAMES = [
     },
     {
         name: 'SOLITAIRE',
+        key: 'solitaire',
         desc: 'Build the foundations, one card at a time.',
         href: 'solitaire.html',
         color: '#f472b6',
@@ -857,6 +920,7 @@ const GAMES = [
     },
     {
         name: 'SIMON',
+        key: 'simon',
         desc: 'Repeat the flashing sequence before it outruns your memory.',
         href: 'games/simon/index.html',
         color: '#f97316',
@@ -865,6 +929,7 @@ const GAMES = [
     },
     {
         name: 'WHACK-A-MOLE',
+        key: 'whack-a-mole',
         desc: 'Smash moles before they vanish — fast reflexes win.',
         href: 'games/whack-a-mole/index.html',
         color: '#ef4444',
@@ -873,6 +938,7 @@ const GAMES = [
     },
     {
         name: 'MINESWEEPER',
+        key: 'minesweeper',
         desc: 'Defuse the minefield — one wrong click and it\'s over.',
         href: 'games/minesweeper/index.html',
         color: '#38bdf8',
@@ -881,6 +947,7 @@ const GAMES = [
     },
     {
         name: 'FLAPPY BIRD',
+        key: 'flappy-bird',
         desc: 'Flap through the gaps — one touch keeps you airborne.',
         href: 'games/flappy-bird/index.html',
         color: '#facc15',
@@ -889,6 +956,7 @@ const GAMES = [
     },
     {
         name: 'TOWER DEFENSE',
+        key: 'tower-defense',
         desc: 'Place towers to stop the enemy horde.',
         href: 'games/tower-defense/index.html',
         color: '#a855f7',
@@ -897,6 +965,7 @@ const GAMES = [
     },
     {
         name: 'EXCITEBIKE',
+        key: 'excitebike',
         desc: 'Race your motorbike, hit ramps, and manage your heat.',
         href: 'games/excitebike/index.html',
         color: '#f97316',
@@ -905,6 +974,7 @@ const GAMES = [
     },
     {
         name: 'ASTEROIDS',
+        key: 'asteroids',
         desc: 'Blast space rocks before they smash your ship.',
         href: 'games/asteroids/index.html',
         color: '#0ff',
@@ -913,6 +983,7 @@ const GAMES = [
     },
     {
         name: 'FROGGER',
+        key: 'frogger',
         desc: 'Hop across traffic and rivers to reach home safely.',
         href: 'games/frogger/index.html',
         color: '#4ade80',
@@ -921,6 +992,7 @@ const GAMES = [
     },
     {
         name: 'CONTRA',
+        key: 'contra',
         desc: 'Run, gun, and blast your way through enemy forces.',
         href: 'games/contra/index.html',
         color: '#e74c3c',
@@ -930,17 +1002,32 @@ const GAMES = [
 ];
 
 /* ── Render cards ─────────────────────────────────────── */
+function bestScoreFor(key) {
+    const scores = getScores(key);
+    return scores.length ? scores[0].score : 0;
+}
+
 function renderCards() {
-    document.getElementById('gameGrid').innerHTML = GAMES.map(g => `
+    document.getElementById('gameGrid').innerHTML = GAMES.map(g => {
+        const best = bestScoreFor(g.key);
+        const hasScore = best > 0;
+        const cls = hasScore ? 'card-best has-score' : 'card-best no-score';
+        const display = hasScore ? best.toLocaleString() : '---';
+        return `
         <a class="game-card" href="${g.href}"
            style="--color:${g.color};--glow:${g.glow}">
             ${makeSVG(g.pixels)}
             <div class="card-body">
                 <div class="card-name">${g.name}</div>
                 <div class="card-desc">${g.desc}</div>
+                <div class="${cls}">
+                    <span class="card-best-icon">${hasScore ? '★' : '☆'}</span>
+                    <span class="card-best-label">BEST</span>
+                    <span class="card-best-value">${display}</span>
+                </div>
             </div>
         </a>
-    `).join('');
+    `}).join('');
 }
 
 /* ── Screen transitions ───────────────────────────────── */
@@ -984,14 +1071,8 @@ function initDifficulty() {
 }
 
 /* ── Leaderboard ──────────────────────────────────────── */
-const GAME_COLOR = {
-    snake:         '#22c55e',
-    tetris:        '#22d3ee',
-    breakout:      '#fbbf24',
-    solitaire:     '#f472b6',
-    'flappy-bird': '#facc15',
-    frogger:       '#4ade80',
-};
+const GAME_COLOR = {};
+GAMES.forEach(g => { GAME_COLOR[g.key] = g.color; });
 
 function timeAgo(ts) {
     const diff = Date.now() - ts;
@@ -1028,13 +1109,20 @@ function renderLeaderboard() {
     `).join('');
 }
 
-document.getElementById('clearScoresBtn').addEventListener('click', () => {
+function resetAllScores() {
     clearAllScores();
     renderLeaderboard();
-});
+    renderCards();
+}
+
+document.getElementById('clearScoresBtn').addEventListener('click', resetAllScores);
+document.getElementById('footerResetBtn').addEventListener('click', resetAllScores);
 
 // Refresh when entering the game screen
-document.getElementById('playBtn').addEventListener('click', renderLeaderboard, true);
+document.getElementById('playBtn').addEventListener('click', () => {
+    renderLeaderboard();
+    renderCards();
+}, true);
 
 /* ── Boot ─────────────────────────────────────────────── */
 renderCards();
