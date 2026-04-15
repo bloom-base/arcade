@@ -828,6 +828,30 @@ const froggerPixels = (() => {
     ];
 })();
 
+// Space Invaders — alien grid, player cannon, shields
+const spaceInvadersPixels = (() => {
+    const BG = '#0a0a0a', MG = '#e879f9', CY = '#22d3ee', GR = '#4ade80', RD = '#ef4444', WH = '#fff';
+    return [
+        // Row of squid aliens (top, magenta)
+        [1,2,MG],[1,3,MG],[1,5,MG],[1,6,MG],[1,8,MG],[1,9,MG],[1,11,MG],[1,12,MG],
+        // Row of crab aliens (cyan)
+        [3,2,CY],[3,3,CY],[3,5,CY],[3,6,CY],[3,8,CY],[3,9,CY],[3,11,CY],[3,12,CY],
+        // Row of octopus aliens (green)
+        [5,2,GR],[5,3,GR],[5,5,GR],[5,6,GR],[5,8,GR],[5,9,GR],[5,11,GR],[5,12,GR],
+        // Shields
+        [7,2,GR],[7,3,GR],[7,6,GR],[7,7,GR],[7,10,GR],[7,11,GR],
+        // Player cannon (cyan)
+        [9,7,CY],[9,8,CY],[9,6,CY],[9,9,CY],
+        [8,7,CY],[8,8,CY],
+        // Player bullet
+        [6,7,WH],[5,7,WH],
+        // Alien bullet
+        [6,11,MG],
+        // UFO at top
+        [0,12,RD],[0,13,RD],[0,14,RD],
+    ];
+})();
+
 const contraPixels = [
     // Sky background (dark blue, rows 0-6)
     // Mountains silhouette (rows 3-5)
@@ -998,6 +1022,15 @@ const GAMES = [
         color: '#e74c3c',
         glow:  'rgba(231,76,60,0.35)',
         pixels: contraPixels,
+    },
+    {
+        name: 'SPACE INVADERS',
+        key: 'space-invaders',
+        desc: 'Defend Earth from waves of descending alien invaders.',
+        href: 'games/space-invaders/index.html',
+        color: '#e879f9',
+        glow:  'rgba(232,121,249,0.35)',
+        pixels: spaceInvadersPixels,
     },
 ];
 
