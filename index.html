@@ -172,6 +172,31 @@
         }
         .back-btn:hover { color: #fafafa; border-color: #555; }
 
+        /* ── Sound toggle ─────────────────────────────────── */
+        .sound-toggle {
+            position: fixed;
+            top: 1.25rem;
+            right: 1.25rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7rem;
+            color: #4ade80;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            width: 2.2rem;
+            height: 2.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+        }
+        .sound-toggle:hover { border-color: #555; }
+        .sound-toggle.muted .sound-icon {
+            color: #555;
+            text-decoration: line-through;
+        }
+
         .game-screen-content {
             width: 100%;
             max-width: 660px;
@@ -444,6 +469,9 @@
 <!-- ── Screen 2 : Game Selection ──────────────────────────── -->
 <div id="game-screen" class="screen">
     <button class="back-btn" id="backBtn">← BACK</button>
+    <button class="sound-toggle" id="soundToggle" aria-label="Toggle sound">
+        <span class="sound-icon" id="soundIcon">♪</span>
+    </button>
 
     <div class="game-screen-content">
         <div class="game-header">
@@ -472,6 +500,7 @@
 <script type="module">
 import { getDifficulty, setDifficulty } from './utils/difficulty.js';
 import { getAllScores, getScores, clearAllScores } from './utils/scores.js';
+import { isMuted, toggleMute, playHover, playSelect, playBoop, playConfirm } from './utils/audio.js';
 
 /* ── Pixel-art SVG renderer ──────────────────────────────────
    pixels: Array of [row, col, color]
@@ -1146,6 +1175,7 @@ function resetAllScores() {
     clearAllScores();
     renderLeaderboard();
     renderCards();
+    attachCardSounds();
 }
 
 document.getElementById('clearScoresBtn').addEventListener('click', resetAllScores);
@@ -1155,10 +1185,43 @@ document.getElementById('footerResetBtn').addEventListener('click', resetAllScor
 document.getElementById('playBtn').addEventListener('click', () => {
     renderLeaderboard();
     renderCards();
+    attachCardSounds();
 }, true);
+
+/* ── Sound toggle ─────────────────────────────────────── */
+const soundToggle = document.getElementById('soundToggle');
+
+function updateSoundIcon() {
+    soundToggle.classList.toggle('muted', isMuted());
+}
+updateSoundIcon();
+
+soundToggle.addEventListener('click', () => {
+    toggleMute();
+    updateSoundIcon();
+    if (!isMuted()) playBoop();   // audible feedback when unmuting
+});
+
+/* ── Wire up sound effects ────────────────────────────── */
+function attachCardSounds() {
+    document.querySelectorAll('.game-card').forEach(card => {
+        card.addEventListener('mouseenter', playHover);
+        card.addEventListener('click', playSelect);
+    });
+}
+
+// Add sounds to screen-transition / difficulty buttons
+document.getElementById('playBtn').addEventListener('click', playConfirm);
+document.getElementById('backBtn').addEventListener('click', playBoop);
+document.querySelectorAll('.difficulty-btn').forEach(btn => {
+    btn.addEventListener('click', playBoop);
+});
+document.getElementById('clearScoresBtn').addEventListener('click', playBoop);
+document.getElementById('footerResetBtn').addEventListener('click', playBoop);
 
 /* ── Boot ─────────────────────────────────────────────── */
 renderCards();
+attachCardSounds();
 initDifficulty();
 renderLeaderboard();
 
