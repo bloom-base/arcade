@@ -267,6 +267,35 @@
         .game-card:hover::before { opacity: 1; }
         .game-card:active { transform: translateY(-2px) scale(1.01); }
 
+        /* Bloom Special card */
+        .game-card.bloom-special {
+            border-color: #ff6b9d44;
+            background: linear-gradient(135deg, #1a0a12 0%, #111 50%, #0a0a1a 100%);
+        }
+        .game-card.bloom-special:hover {
+            border-color: #ff6b9d;
+            box-shadow: 0 0 30px rgba(255,107,157,0.4), 0 0 60px rgba(255,107,157,0.15), 0 12px 32px rgba(0,0,0,0.55);
+        }
+        .card-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 3;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.4rem;
+            color: #ff6b9d;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid #ff6b9d55;
+            border-radius: 4px;
+            padding: 4px 7px;
+            text-shadow: 0 0 8px #ff6b9d;
+            animation: badgePulse 2s ease-in-out infinite;
+        }
+        @keyframes badgePulse {
+            0%,100% { opacity: 1; box-shadow: 0 0 6px rgba(255,107,157,0.3); }
+            50% { opacity: 0.85; box-shadow: 0 0 14px rgba(255,107,157,0.6); }
+        }
+
         .card-thumb {
             width: 100%;
             display: block;
@@ -918,6 +947,32 @@ const contraPixels = [
 
 const GAMES = [
     {
+        name: 'MEGA MIX',
+        key: 'megamix',
+        desc: '10 rapid-fire microgames, one life, infinite speed. How long can you last?',
+        href: 'games/megamix/index.html',
+        color: '#ff6b9d',
+        glow:  'rgba(255,107,157,0.45)',
+        pixels: [
+            // Flower petals (pink)
+            [1,2,'#ff6b9d'],[0,3,'#ff6b9d'],[1,4,'#ff6b9d'],[2,3,'#ff6b9d'],[1,3,'#fbbf24'],
+            // M
+            [3,0,'#22d3ee'],[4,0,'#22d3ee'],[5,0,'#22d3ee'],[6,0,'#22d3ee'],
+            [3,1,'#22d3ee'],[3,2,'#22d3ee'],[4,2,'#22d3ee'],
+            [3,3,'#22d3ee'],[3,4,'#22d3ee'],[4,4,'#22d3ee'],[5,4,'#22d3ee'],[6,4,'#22d3ee'],
+            // I
+            [3,6,'#ff6b9d'],[4,6,'#ff6b9d'],[5,6,'#ff6b9d'],[6,6,'#ff6b9d'],
+            // X
+            [3,8,'#a855f7'],[3,12,'#a855f7'],[4,9,'#a855f7'],[4,11,'#a855f7'],
+            [5,10,'#a855f7'],[6,9,'#a855f7'],[6,11,'#a855f7'],[7,8,'#a855f7'],[7,12,'#a855f7'],
+            // Speed lines
+            [8,1,'#fbbf24'],[8,3,'#fbbf24'],[8,5,'#fbbf24'],[8,7,'#fbbf24'],[8,9,'#fbbf24'],[8,11,'#fbbf24'],
+            // Stars
+            [0,8,'#fff'],[1,12,'#fff'],[0,14,'#fff'],
+        ],
+        badge: '🌸 BLOOM SPECIAL',
+    },
+    {
         name: 'SNAKE',
         key: 'snake',
         desc: 'Eat, grow, and never bite yourself.',
@@ -1075,9 +1130,11 @@ function renderCards() {
         const hasScore = best > 0;
         const cls = hasScore ? 'card-best has-score' : 'card-best no-score';
         const display = hasScore ? best.toLocaleString() : '---';
+        const badgeHTML = g.badge ? `<div class="card-badge">${g.badge}</div>` : '';
         return `
-        <a class="game-card" href="${g.href}"
+        <a class="game-card${g.badge ? ' bloom-special' : ''}" href="${g.href}"
            style="--color:${g.color};--glow:${g.glow}">
+            ${badgeHTML}
             ${makeSVG(g.pixels)}
             <div class="card-body">
                 <div class="card-name">${g.name}</div>

@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🌸 MEGA MIX — Bloom Special</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;overflow:hidden;font-family:'Press Start 2P',monospace;user-select:none;touch-action:none}
+canvas{display:block;margin:0 auto;image-rendering:pixelated}
+a.back-btn{position:fixed;top:16px;left:16px;color:#888;text-decoration:none;font:10px 'Press Start 2P',monospace;z-index:100;transition:color .2s}
+a.back-btn:hover{color:#fff}
+button.mute-btn{position:fixed;top:16px;right:16px;background:none;border:1px solid #444;color:#aaa;font:10px 'Press Start 2P',monospace;padding:6px 10px;cursor:pointer;z-index:100;border-radius:4px;transition:all .2s}
+button.mute-btn:hover{border-color:#888;color:#fff}
+button.mute-btn.off{color:#555;border-color:#333}
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:90;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px}
+#overlay.show{display:flex}
+#overlay h2{color:#ff6b9d;font-size:clamp(18px,4vw,28px);text-shadow:0 0 20px #ff6b9d}
+#overlay .score-line{color:#fff;font-size:clamp(12px,2.5vw,16px)}
+#overlay .hs-line{color:#fbbf24;font-size:clamp(10px,2vw,13px);animation:pulse 1s infinite}
+#overlay button{margin-top:12px;padding:12px 24px;font:clamp(10px,2vw,13px) 'Press Start 2P',monospace;border:2px solid;border-radius:6px;cursor:pointer;transition:all .2s}
+#overlay .btn-play{background:#ff6b9d;border-color:#ff6b9d;color:#000}
+#overlay .btn-play:hover{background:#ff8db5}
+#overlay .btn-menu{background:none;border-color:#555;color:#888}
+#overlay .btn-menu:hover{border-color:#aaa;color:#fff}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+/* CRT scanlines */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:200;
+background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px)}
+</style>
+</head>
+<body>
+<a class="back-btn" href="../../index.html#games">← BACK</a>
+<button class="mute-btn" id="muteBtn">♪ SFX</button>
+<canvas id="canvas"></canvas>
+<div id="overlay">
+    <h2 id="overTitle">GAME OVER</h2>
+    <div class="score-line" id="overScore"></div>
+    <div class="hs-line" id="overHS" style="display:none"></div>
+    <button class="btn-play" id="btnReplay">▶ PLAY AGAIN</button>
+    <button class="btn-menu" onclick="location.href='../../index.html#games'">✕ MENU</button>
+</div>
+
+<script type="module">
+import { getDifficulty } from '../../utils/difficulty.js';
+import { saveScore, showHighScoreBanner, playHighScoreChime } from '../../utils/scores.js';
+
+/* ── Audio ──────────────────────────────────────────── */
+let muted = localStorage.getItem('arcade_sound') === 'off';
+const muteBtn = document.getElementById('muteBtn');
+function updateMuteBtn(){ muteBtn.textContent = muted ? '♪ OFF' : '♪ SFX'; muteBtn.classList.toggle('off', muted); }
+updateMuteBtn();
+muteBtn.addEventListener('click', () => { muted = !muted; localStorage.setItem('arcade_sound', muted ? 'off' : 'on'); updateMuteBtn(); });
+
+let audioCtx;
+function getAudio(){ if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
+function tone(freq, type='square', dur=0.1, vol=0.15, delay=0){
+    if(muted) return;
+    const ctx = getAudio();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.value = vol;
+    g.gain.setValueAtTime(vol, ctx.currentTime + delay);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(ctx.currentTime + delay);
+    o.stop(ctx.currentTime + delay + dur + 0.05);
+}
+function sfxWin(){ tone(523,.08); tone(659,'square',.08,.15,.08); tone(784,'square',.1,.15,.16); }
+function sfxFail(){ tone(200,'sawtooth',.3,.2); tone(150,'sawtooth',.3,.15,.1); }
+function sfxReady(){ tone(440,'square',.06,.12); tone(550,'square',.06,.12,.08); }
+function sfxMilestone(){ for(let i=0;i<5;i++) tone(523+i*80,'square',.08,.12,i*.06); }
+function sfxTick(){ tone(880,'square',.03,.06); }
+function sfxAction(){ tone(660,'triangle',.06,.1); }
+
+/* ── Canvas setup ───────────────────────────────────── */
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+function resize(){
+    const s = Math.min(window.innerWidth, window.innerHeight * 0.95, 600);
+    W = canvas.width = Math.floor(s);
+    H = canvas.height = Math.floor(s);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    canvas.style.marginTop = Math.max(0, (window.innerHeight - H) / 2) + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+/* ── Difficulty ──────────────────────────────────────── */
+const diffKey = getDifficulty();
+const DIFF = { easy: { baseTime: 8, speedUp: 0.92 }, normal: { baseTime: 6, speedUp: 0.88 }, hard: { baseTime: 5, speedUp: 0.84 } }[diffKey] || { baseTime: 6, speedUp: 0.88 };
+
+/* ── Input ──────────────────────────────────────────── */
+const keys = {};
+let mouseX = 0, mouseY = 0, mouseDown = false, mouseClicked = false;
+let touchActive = false;
+window.addEventListener('keydown', e => { keys[e.key] = true; e.preventDefault(); });
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+canvas.addEventListener('mousedown', e => { mouseDown = true; mouseClicked = true; updateMouse(e); });
+canvas.addEventListener('mouseup', () => { mouseDown = false; });
+canvas.addEventListener('mousemove', e => updateMouse(e));
+canvas.addEventListener('touchstart', e => { e.preventDefault(); touchActive = true; mouseDown = true; mouseClicked = true; updateTouch(e); }, {passive:false});
+canvas.addEventListener('touchmove', e => { e.preventDefault(); updateTouch(e); }, {passive:false});
+canvas.addEventListener('touchend', e => { e.preventDefault(); mouseDown = false; touchActive = false; });
+function updateMouse(e){ const r = canvas.getBoundingClientRect(); mouseX = (e.clientX - r.left) * (W / r.width); mouseY = (e.clientY - r.top) * (H / r.height); }
+function updateTouch(e){ if(e.touches.length){ const t = e.touches[0]; const r = canvas.getBoundingClientRect(); mouseX = (t.clientX - r.left) * (W / r.width); mouseY = (t.clientY - r.top) * (H / r.height); } }
+
+/* ── Colors ─────────────────────────────────────────── */
+const COLORS = {
+    bg: '#0a0a0a', pink: '#ff6b9d', cyan: '#22d3ee', green: '#22c55e',
+    yellow: '#fbbf24', purple: '#a855f7', red: '#ef4444', orange: '#f97316',
+    white: '#ffffff', gray: '#666', darkGray: '#222'
+};
+
+/* ── Helpers ─────────────────────────────────────────── */
+function drawText(text, x, y, size, color='#fff', align='center'){
+    ctx.save(); ctx.font = `${size}px 'Press Start 2P'`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y); ctx.restore();
+}
+function drawTextGlow(text, x, y, size, color, glowColor){
+    ctx.save(); ctx.font = `${size}px 'Press Start 2P'`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = glowColor || color; ctx.shadowBlur = 15;
+    ctx.fillStyle = color; ctx.fillText(text, x, y); ctx.restore();
+}
+function randInt(a, b){ return Math.floor(Math.random() * (b - a + 1)) + a; }
+function lerp(a, b, t){ return a + (b - a) * t; }
+function dist(x1, y1, x2, y2){ return Math.hypot(x2 - x1, y2 - y1); }
+function rectCollide(a, b){ return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y; }
+
+/* ════════════════════════════════════════════════════════
+   MICROGAMES
+   Each: { name, color, instruction, init(gw,gh,spd), update(dt), draw(ctx,gw,gh), checkWin(), checkFail() }
+   gw/gh = game area width/height, spd = speed multiplier (1+)
+   ════════════════════════════════════════════════════════ */
+const GW = () => W;
+const GH = () => H;
+
+/* ── 1. DODGE! ──────────────────────────────────────── */
+const dodgeGame = {
+    name: 'DODGE!', color: COLORS.cyan, instruction: 'Arrow keys / tilt to dodge!',
+    init(gw, gh, spd){
+        this.px = gw/2; this.py = gh*0.7; this.ps = 5;
+        this.rocks = [];
+        this.spawnTimer = 0; this.spawnRate = Math.max(0.15, 0.4 / spd);
+        this.spd = spd; this.hit = false; this.won = false;
+        this.elapsed = 0; this.surviveTime = 1.0; // seconds
+    },
+    update(dt){
+        const gw = GW(), gh = GH();
+        const speed = 5 * this.spd;
+        if(keys['ArrowLeft'] || keys['a']) this.px -= speed;
+        if(keys['ArrowRight'] || keys['d']) this.px += speed;
+        if(keys['ArrowUp'] || keys['w']) this.py -= speed;
+        if(keys['ArrowDown'] || keys['s']) this.py += speed;
+        // Touch/mouse
+        if(mouseDown){
+            const dx = mouseX - this.px, dy = mouseY - this.py;
+            const d = Math.hypot(dx, dy);
+            if(d > 5){ this.px += (dx/d) * speed * 1.2; this.py += (dy/d) * speed * 1.2; }
+        }
+        this.px = Math.max(15, Math.min(gw-15, this.px));
+        this.py = Math.max(gh*0.3, Math.min(gh-15, this.py));
+        // Spawn rocks
+        this.spawnTimer -= dt;
+        if(this.spawnTimer <= 0){
+            this.spawnTimer = this.spawnRate;
+            const rx = randInt(20, gw-20);
+            this.rocks.push({ x: rx, y: -20, s: randInt(12, 22), vy: (3 + Math.random()*3) * this.spd, rot: Math.random()*6 });
+        }
+        // Update rocks
+        for(const r of this.rocks){
+            r.y += r.vy;
+            r.rot += 0.05;
+            if(dist(this.px, this.py, r.x, r.y) < r.s/2 + 10) this.hit = true;
+        }
+        this.rocks = this.rocks.filter(r => r.y < gh + 30);
+        this.elapsed += dt;
+        if(this.elapsed >= this.surviveTime && !this.hit) this.won = true;
+    },
+    draw(c, gw, gh){
+        // Stars bg
+        for(let i=0;i<20;i++){
+            c.fillStyle = 'rgba(255,255,255,0.3)';
+            c.fillRect((i*97+this.elapsed*20)%gw, (i*53)%gh, 2, 2);
+        }
+        // Player ship
+        c.save(); c.translate(this.px, this.py);
+        c.fillStyle = COLORS.cyan;
+        c.beginPath(); c.moveTo(0,-14); c.lineTo(-10,10); c.lineTo(10,10); c.closePath(); c.fill();
+        c.fillStyle = '#fff';
+        c.fillRect(-3, -4, 6, 8);
+        c.restore();
+        // Rocks
+        for(const r of this.rocks){
+            c.save(); c.translate(r.x, r.y); c.rotate(r.rot);
+            c.fillStyle = '#888';
+            c.beginPath();
+            for(let i=0;i<6;i++){
+                const a = (Math.PI*2/6)*i, rad = r.s/2*(0.7+0.3*Math.sin(i*2.5));
+                i===0 ? c.moveTo(Math.cos(a)*rad, Math.sin(a)*rad) : c.lineTo(Math.cos(a)*rad, Math.sin(a)*rad);
+            }
+            c.closePath(); c.fill(); c.restore();
+        }
+    },
+    checkWin(){ return this.won; },
+    checkFail(){ return this.hit; }
+};
+
+/* ── 2. STACK! ──────────────────────────────────────── */
+const stackGame = {
+    name: 'STACK!', color: COLORS.purple, instruction: '← → move, ↓ drop!',
+    init(gw, gh, spd){
+        this.cols = 8; this.rows = 6;
+        this.cellW = Math.floor(gw * 0.7 / this.cols);
+        this.cellH = this.cellW;
+        this.offX = Math.floor((gw - this.cols * this.cellW) / 2);
+        this.offY = gh - this.rows * this.cellH - 40;
+        this.grid = [];
+        for(let r=0;r<this.rows;r++){
+            this.grid[r] = [];
+            for(let c=0;c<this.cols;c++) this.grid[r][c] = 0;
+        }
+        // Fill bottom row with gap for a piece
+        const gap = randInt(1, this.cols - 4);
+        for(let c=0;c<this.cols;c++){
+            if(c < gap || c >= gap + 4) this.grid[this.rows-1][c] = 1;
+        }
+        // Falling piece: I-piece (4 wide)
+        this.pieceW = 4; this.pieceX = Math.floor((this.cols - this.pieceW)/2);
+        this.pieceY = 0; this.dropTimer = 0;
+        this.dropRate = Math.max(0.1, 0.5 / spd);
+        this.spd = spd; this.won = false; this.lost = false; this.moveCD = 0;
+        this.gapStart = gap;
+    },
+    update(dt){
+        this.moveCD -= dt;
+        if((keys['ArrowLeft'] || keys['a']) && this.moveCD <= 0){
+            if(this.pieceX > 0) { this.pieceX--; sfxAction(); }
+            this.moveCD = 0.1;
+        }
+        if((keys['ArrowRight'] || keys['d']) && this.moveCD <= 0){
+            if(this.pieceX + this.pieceW < this.cols) { this.pieceX++; sfxAction(); }
+            this.moveCD = 0.1;
+        }
+        if(keys['ArrowDown'] || keys['s']) this.dropTimer += dt * 5;
+        // Touch: tap left/right half
+        if(mouseClicked){
+            const gw = GW();
+            if(mouseY < this.offY){
+                // drop
+                this.dropTimer = 999;
+            } else if(mouseX < gw/2){
+                if(this.pieceX > 0) this.pieceX--;
+            } else {
+                if(this.pieceX + this.pieceW < this.cols) this.pieceX++;
+            }
+        }
+        this.dropTimer += dt;
+        if(this.dropTimer >= this.dropRate){
+            this.dropTimer = 0;
+            // Check if can go down
+            if(this.pieceY + 1 < this.rows && this.canPlace(this.pieceX, this.pieceY + 1)){
+                this.pieceY++;
+            } else {
+                // Lock
+                for(let i=0;i<this.pieceW;i++){
+                    const c = this.pieceX + i;
+                    if(c < this.cols && this.pieceY < this.rows) this.grid[this.pieceY][c] = 2;
+                }
+                // Check line clear
+                if(this.grid[this.rows-1].every(v => v > 0)){
+                    this.won = true;
+                } else {
+                    this.lost = true;
+                }
+            }
+        }
+    },
+    canPlace(px, py){
+        for(let i=0;i<this.pieceW;i++){
+            const c = px + i;
+            if(c >= this.cols) return false;
+            if(py < this.rows && this.grid[py][c] !== 0) return false;
+        }
+        return true;
+    },
+    draw(c, gw, gh){
+        // Grid
+        for(let r=0;r<this.rows;r++){
+            for(let col=0;col<this.cols;col++){
+                const x = this.offX + col * this.cellW;
+                const y = this.offY + r * this.cellH;
+                if(this.grid[r][col] === 1){
+                    c.fillStyle = '#555'; c.fillRect(x+1, y+1, this.cellW-2, this.cellH-2);
+                } else if(this.grid[r][col] === 2){
+                    c.fillStyle = COLORS.purple; c.fillRect(x+1, y+1, this.cellW-2, this.cellH-2);
+                } else {
+                    c.strokeStyle = '#222'; c.strokeRect(x+1, y+1, this.cellW-2, this.cellH-2);
+                }
+            }
+        }
+        // Falling piece
+        if(!this.won && !this.lost){
+            c.fillStyle = COLORS.purple;
+            for(let i=0;i<this.pieceW;i++){
+                const x = this.offX + (this.pieceX + i) * this.cellW;
+                const y = this.offY + this.pieceY * this.cellH;
+                c.fillRect(x+1, y+1, this.cellW-2, this.cellH-2);
+            }
+        }
+        // Arrow hint
+        if(!this.won && !this.lost){
+            c.fillStyle = 'rgba(255,255,255,0.15)';
+            const ax = this.offX + (this.gapStart + 2) * this.cellW;
+            const ay = this.offY - 20;
+            c.beginPath(); c.moveTo(ax, ay); c.lineTo(ax-8, ay-12); c.lineTo(ax+8, ay-12); c.closePath(); c.fill();
+        }
+    },
+    checkWin(){ return this.won; },
+    checkFail(){ return this.lost; }
+};
+
+/* ── 3. WHACK! ──────────────────────────────────────── */
+const whackGame = {
+    name: 'WHACK!', color: COLORS.red, instruction: 'Click/tap the mole!',
+    init(gw, gh, spd){
+        this.holes = [];
+        const cols = 3, rows = 2;
+        const hw = 60, hh = 50, gap = 20;
+        const totalW = cols * hw + (cols-1)*gap;
+        const totalH = rows * hh + (rows-1)*gap;
+        const ox = (gw - totalW)/2, oy = (gh - totalH)/2 + 20;
+        for(let r=0;r<rows;r++){
+            for(let c=0;c<cols;c++){
+                this.holes.push({ x: ox + c*(hw+gap), y: oy + r*(hh+gap), w: hw, h: hh, active: false });
+            }
+        }
+        this.moleIdx = -1; this.moleTimer = 0;
+        this.showDelay = Math.max(0.2, 0.6 / spd);
+        this.won = false; this.hit = false;
+        this.elapsed = 0; this.spd = spd;
+    },
+    update(dt){
+        this.elapsed += dt;
+        if(this.moleIdx < 0){
+            this.moleTimer += dt;
+            if(this.moleTimer >= this.showDelay){
+                this.moleIdx = randInt(0, this.holes.length - 1);
+                this.holes[this.moleIdx].active = true;
+                sfxAction();
+            }
+        }
+        if(mouseClicked && this.moleIdx >= 0){
+            const h = this.holes[this.moleIdx];
+            if(mouseX >= h.x && mouseX <= h.x+h.w && mouseY >= h.y && mouseY <= h.y+h.h){
+                this.won = true; this.hit = true;
+            }
+        }
+    },
+    draw(c, gw, gh){
+        for(let i=0;i<this.holes.length;i++){
+            const h = this.holes[i];
+            // Hole
+            c.fillStyle = '#2a1a0a';
+            c.beginPath(); c.ellipse(h.x+h.w/2, h.y+h.h*0.8, h.w/2, h.h*0.25, 0, 0, Math.PI*2); c.fill();
+            if(h.active){
+                // Mole
+                c.fillStyle = '#8B4513';
+                c.beginPath(); c.arc(h.x+h.w/2, h.y+h.h*0.4, 22, 0, Math.PI*2); c.fill();
+                c.fillStyle = '#333';
+                c.beginPath(); c.arc(h.x+h.w/2-7, h.y+h.h*0.35, 3, 0, Math.PI*2); c.fill();
+                c.beginPath(); c.arc(h.x+h.w/2+7, h.y+h.h*0.35, 3, 0, Math.PI*2); c.fill();
+                // Nose
+                c.fillStyle = '#d4856a';
+                c.beginPath(); c.arc(h.x+h.w/2, h.y+h.h*0.45, 4, 0, Math.PI*2); c.fill();
+            }
+        }
+    },
+    checkWin(){ return this.won; },
+    checkFail(){ return false; } // timeout handles fail
+};
+
+/* ── 4. CROSS! ──────────────────────────────────────── */
+const crossGame = {
+    name: 'CROSS!', color: COLORS.green, instruction: '↑ to hop across!',
+    init(gw, gh, spd){
+        this.lanes = 4;
+        this.laneH = Math.floor(gh * 0.12);
+        this.startY = gh - 50;
+        this.goalY = this.startY - (this.lanes + 1) * this.laneH;
+        this.frogX = gw / 2; this.frogY = this.startY;
+        this.frogW = 24;
+        this.cars = [];
+        for(let i=0;i<this.lanes;i++){
+            const y = this.startY - (i+1) * this.laneH;
+            const dir = i % 2 === 0 ? 1 : -1;
+            const numCars = 2 + Math.floor(Math.random()*2);
+            const carSpd = (2 + Math.random()*2) * spd;
+            for(let j=0;j<numCars;j++){
+                this.cars.push({ x: j * (gw/numCars) + randInt(-30,30), y: y, w: randInt(40,65), h: this.laneH*0.5, vx: dir * carSpd, color: ['#e74c3c','#3498db','#f1c40f','#9b59b6'][randInt(0,3)] });
+            }
+        }
+        this.won = false; this.dead = false; this.hopCD = 0; this.spd = spd;
+    },
+    update(dt){
+        const gw = GW();
+        this.hopCD -= dt;
+        let hopped = false;
+        if((keys['ArrowUp'] || keys['w']) && this.hopCD <= 0){ this.frogY -= this.laneH; this.hopCD = 0.18; hopped = true; }
+        if((keys['ArrowLeft'] || keys['a']) && this.hopCD <= 0){ this.frogX -= 30; this.hopCD = 0.12; }
+        if((keys['ArrowRight'] || keys['d']) && this.hopCD <= 0){ this.frogX += 30; this.hopCD = 0.12; }
+        if(mouseClicked && !hopped){
+            if(mouseY < this.frogY - 20){ this.frogY -= this.laneH; }
+            else if(mouseX < this.frogX - 20) this.frogX -= 30;
+            else if(mouseX > this.frogX + 20) this.frogX += 30;
+        }
+        this.frogX = Math.max(15, Math.min(gw - 15, this.frogX));
+        // Cars
+        for(const car of this.cars){
+            car.x += car.vx;
+            if(car.vx > 0 && car.x > gw + 20) car.x = -car.w - 20;
+            if(car.vx < 0 && car.x + car.w < -20) car.x = gw + 20;
+            // Collision
+            if(Math.abs(this.frogY - car.y) < this.laneH * 0.4){
+                if(this.frogX + this.frogW/2 > car.x && this.frogX - this.frogW/2 < car.x + car.w){
+                    this.dead = true;
+                }
+            }
+        }
+        if(this.frogY <= this.goalY) this.won = true;
+    },
+    draw(c, gw, gh){
+        // Goal zone
+        c.fillStyle = '#1a4a1a';
+        c.fillRect(0, this.goalY - 10, gw, this.laneH);
+        drawText('SAFE', gw/2, this.goalY + this.laneH/2 - 10, 10, '#4ade80');
+        // Lanes
+        for(let i=0;i<this.lanes;i++){
+            const y = this.startY - (i+1) * this.laneH;
+            c.fillStyle = i%2===0 ? '#1a1a2e' : '#1e1e30';
+            c.fillRect(0, y - this.laneH*0.3, gw, this.laneH);
+            // Lane markers
+            c.setLineDash([15, 15]); c.strokeStyle = '#333'; c.lineWidth = 1;
+            c.beginPath(); c.moveTo(0, y + this.laneH*0.35); c.lineTo(gw, y + this.laneH*0.35); c.stroke();
+            c.setLineDash([]);
+        }
+        // Cars
+        for(const car of this.cars){
+            c.fillStyle = car.color;
+            c.fillRect(car.x, car.y - car.h/2, car.w, car.h);
+            c.fillStyle = 'rgba(255,255,255,0.3)';
+            c.fillRect(car.x + car.w - 8, car.y - car.h/2 + 3, 5, car.h - 6);
+        }
+        // Frog
+        c.fillStyle = COLORS.green;
+        c.beginPath(); c.arc(this.frogX, this.frogY, 12, 0, Math.PI*2); c.fill();
+        c.fillStyle = '#fff';
+        c.beginPath(); c.arc(this.frogX - 4, this.frogY - 4, 3, 0, Math.PI*2); c.fill();
+        c.beginPath(); c.arc(this.frogX + 4, this.frogY - 4, 3, 0, Math.PI*2); c.fill();
+    },
+    checkWin(){ return this.won; },
+    checkFail(){ return this.dead; }
+};
+
+/* ── 5. RETURN! ─────────────────────────────────────── */
+const returnGame = {
+    name: 'RETURN!', color: COLORS.pink, instruction: '↑↓ or mouse to return the serve!',
+    init(gw, gh, spd){
+        this.padW = 12; this.padH = 70;
+        this.padX = gw - 40; this.padY = gh/2 - this.padH/2;
+        this.bx = 50; this.by = gh/2;
+        this.bvx = 4 * spd; this.bvy = (Math.random()-0.5) * 4 * spd;
+        this.br = 8;
+        this.won = false; this.lost = false; this.returned = false;
+        this.spd = spd;
+    },
+    update(dt){
+        const gw = GW(), gh = GH();
+        const speed = 6 * this.spd;
+        if(keys['ArrowUp'] || keys['w']) this.padY -= speed;
+        if(keys['ArrowDown'] || keys['s']) this.padY += speed;
+        if(mouseDown || touchActive){
+            const target = mouseY - this.padH / 2;
+            this.padY += (target - this.padY) * 0.3;
+        }
+        this.padY = Math.max(0, Math.min(gh - this.padH, this.padY));
+        // Ball
+        this.bx += this.bvx; this.by += this.bvy;
+        if(this.by - this.br < 0){ this.by = this.br; this.bvy *= -1; }
+        if(this.by + this.br > gh){ this.by = gh - this.br; this.bvy *= -1; }
+        // Paddle collision
+        if(this.bx + this.br >= this.padX && this.bx - this.br <= this.padX + this.padW &&
+           this.by >= this.padY && this.by <= this.padY + this.padH && this.bvx > 0){
+            this.bvx *= -1;
+            this.bvy += (Math.random()-0.5)*2;
+            this.returned = true;
+            sfxAction();
+        }
+        // Ball past paddle
+        if(this.bx > gw + 20) this.lost = true;
+        // Ball returned past left wall
+        if(this.returned && this.bx < -10) this.won = true;
+    },
+    draw(c, gw, gh){
+        // Center line
+        c.setLineDash([8, 8]); c.strokeStyle = '#333'; c.lineWidth = 2;
+        c.beginPath(); c.moveTo(gw/2, 0); c.lineTo(gw/2, gh); c.stroke();
+        c.setLineDash([]);
+        // Paddle
+        c.fillStyle = COLORS.pink;
+        c.fillRect(this.padX, this.padY, this.padW, this.padH);
+        // Ball
+        c.fillStyle = '#fff';
+        c.beginPath(); c.arc(this.bx, this.by, this.br, 0, Math.PI*2); c.fill();
+        // Opponent paddle (decorative)
+        c.fillStyle = '#555';
+        c.fillRect(20, this.by - 30, 10, 60);
+    },
+    checkWin(){ return this.won; },
+    checkFail(){ return this.lost; }
+};
+
+/* ── 6. SWEEP! ──────────────────────────────────────── */
+const sweepGame = {
+    name: 'SWEEP!', color: COLORS.cyan, instruction: 'Click the safe tile!',
+    init(gw, gh, spd){
+        this.cols = 4; this.rows = 3;
+        this.cellS = Math.min(70, Math.floor(gw * 0.6 / this.cols));
+        this.offX = (gw - this.cols * this.cellS) / 2;
+        this.offY = (gh - this.rows * this.cellS) / 2 + 20;
+        // Place mines — leave exactly one safe cell
+        this.mines = [];
+        this.safe = randInt(0, this.cols * this.rows - 1);
+        for(let i=0;i<this.cols*this.rows;i++) this.mines.push(i !== this.safe);
+        // Numbers: count adjacent mines
+        this.numbers = [];
+        for(let i=0;i<this.cols*this.rows;i++){
+            if(this.mines[i]){ this.numbers.push(-1); continue; }
+            let count = 0;
+            const r = Math.floor(i/this.cols), c = i%this.cols;
+            for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+                if(dr===0&&dc===0) continue;
+                const nr = r+dr, nc = c+dc;
+                if(nr>=0&&nr<this.rows&&nc>=0&&nc<this.cols&&this.mines[nr*this.cols+nc]) count++;
+            }
+            this.numbers.push(count);
+        }
+        // Actually, make it more interesting: multiple safe cells but highlight which is safe
+        // Let's make 3 mines and rest safe, show numbers, player must click a non-mine cell
+        this.mines = new Array(this.cols*this.rows).fill(false);
+        const mineCount = Math.min(this.cols*this.rows - 1, 3 + Math.floor(spd));
+        const indices = [...Array(this.cols*this.rows).keys()];
+        for(let i = indices.length-1;i>0;i--){ const j=randInt(0,i);[indices[i],indices[j]]=[indices[j],indices[i]]; }
+        for(let i=0;i<mineCount;i++) this.mines[indices[i]] = true;
+        // Recalc numbers
+        this.numbers = [];
+        for(let i=0;i<this.cols*this.rows;i++){
+            if(this.mines[i]){ this.numbers.push(-1); continue; }
+            let count = 0;
+            const r = Math.floor(i/this.cols), c = i%this.cols;
+            for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+                if(dr===0&&dc===0) continue;
+                const nr = r+dr, nc = c+dc;
+                if(nr>=0&&nr<this.rows&&nc>=0&&nc<this.cols&&this.mines[nr*this.cols+nc]) count++;
+            }
+            this.numbers.push(count);
+        }
+        // Reveal some safe cells to give clues
+        this.revealed = new Array(this.cols*this.rows).fill(false);
+        // Reveal one safe cell with a number as a clue
+        for(let i=0;i<this.cols*this.rows;i++){
+            if(!this.mines[i] && this.numbers[i] > 0){ this.revealed[i] = true; break; }
+        }
+        this.won = false; this.lost = false; this.clicked = false;
+    },
+    update(dt){
+        if(mouseClicked && !this.clicked){
+            for(let i=0;i<this.cols*this.rows;i++){
+                if(this.revealed[i]) continue;
+                const r = Math.floor(i/this.cols), c = i%this.cols;
+                const x = this.offX + c*this.cellS, y = this.offY + r*this.cellS;
+                if(mouseX>=x && mouseX<=x+this.cellS && mouseY>=y && mouseY<=y+this.cellS){
+                    this.clicked = true;
+                    if(this.mines[i]) this.lost = true;
+                    else this.won = true;
+                    this.revealed[i] = true;
+                    break;
+                }
+            }
+        }
+    },
+    draw(c, gw, gh){
+        const numColors = ['#aaa','#22c55e','#3b82f6','#ef4444','#a855f7','#f97316','#22d3ee','#fff','#888'];
+        for(let i=0;i<this.cols*this.rows;i++){
+            const r = Math.floor(i/this.cols), col = i%this.cols;
+            const x = this.offX + col*this.cellS, y = this.offY + r*this.cellS;
+            if(this.revealed[i]){
+                c.fillStyle = '#1a1a2e';
+                c.fillRect(x+2, y+2, this.cellS-4, this.cellS-4);
+                if(this.mines[i]){
+                    c.fillStyle = COLORS.red;
+                    c.beginPath(); c.arc(x+this.cellS/2, y+this.cellS/2, 10, 0, Math.PI*2); c.fill();
+                    drawText('💣', x+this.cellS/2, y+this.cellS/2, 16);
+                } else if(this.numbers[i] > 0){
+                    drawText(String(this.numbers[i]), x+this.cellS/2, y+this.cellS/2, 18, numColors[this.numbers[i]]);
+                }
+            } else {
+                c.fillStyle = '#3a3a5a';
+                c.fillRect(x+2, y+2, this.cellS-4, this.cellS-4);
+                c.fillStyle = '#4a4a6a';
+                c.fillRect(x+2, y+2, this.cellS-4, 3);
+                c.fillRect(x+2, y+2, 3, this.cellS-4);
+            }
+        }
+    },
+    checkWin(){ return this.won; },
+    checkFail(){ return this.lost; }
+};
+
+/* ── 7. EAT! ────────────────────────────────────────── */
+const eatGame = {
+    name: 'EAT!', color: COLORS.green, instruction: 'Arrow keys to eat the apple!',
+    init(gw, gh, spd){
+        this.gridS = 20;
+        this.cols = Math.floor(gw * 0.7 / this.gridS);
+        this.rows = Math.floor(gh * 0.5 / this.gridS);
+        this.offX = (gw - this.cols*this.gridS)/2;
+        this.offY = (gh - this.rows*this.gridS)/2 + 15;
+        const cx = Math.floor(this.cols/2), cy = Math.floor(this.rows/2);
+        this.snake = [{x:cx,y:cy},{x:cx-1,y:cy},{x:cx-2,y:cy}];
+        this.dir = {x:1,y:0}; this.nextDir = {x:1,y:0};
+        this.moveTimer = 0; this.moveRate = Math.max(0.05, 0.12 / spd);
+        // Place apple away from snake
+        this.apple = this.placeApple();
+        this.won = false; this.dead = false;
+    },
+    placeApple(){
+        let ax, ay;
+        do { ax = randInt(0, this.cols-1); ay = randInt(0, this.rows-1); }
+        while(this.snake.some(s => s.x===ax && s.y===ay));
+        return {x:ax, y:ay};
+    },
+    update(dt){
+        if((keys['ArrowUp']||keys['w']) && this.dir.y===0) this.nextDir = {x:0,y:-1};
+        if((keys['ArrowDown']||keys['s']) && this.dir.y===0) this.nextDir = {x:0,y:1};
+        if((keys['ArrowLeft']||keys['a']) && this.dir.x===0) this.nextDir = {x:-1,y:0};
+        if((keys['ArrowRight']||keys['d']) && this.dir.x===0) this.nextDir = {x:1,y:0};
+        // Touch: swipe direction
+        if(mouseClicked){
+            const head = this.snake[0];
+            const hx = this.offX + head.x*this.gridS + this.gridS/2;
+            const hy = this.offY + head.y*this.gridS + this.gridS/2;
+            const dx = mouseX - hx, dy = mouseY - hy;
+            if(Math.abs(dx) > Math.abs(dy)){
+                if(dx > 0 && this.dir.x === 0) this.nextDir = {x:1,y:0};
+                else if(dx < 0 && this.dir.x === 0) this.nextDir = {x:-1,y:0};
+            } else {
+                if(dy > 0 && this.dir.y === 0) this.nextDir = {x:0,y:1};
+                else if(dy < 0 && this.dir.y === 0) this.nextDir = {x:0,y:-1};
+            }
+        }
+        this.moveTimer += dt;
+        if(this.moveTimer >= this.moveRate){
+            this.moveTimer = 0;
+            this.dir = {...this.nextDir};
+            const head = this.snake[0];
+            const nx = head.x + this.dir.x, ny = head.y + this.dir.y;
+            // Wall/self collision
+            if(nx<0||nx>=this.cols||ny<0||ny>=this.rows||this.snake.some(s=>s.x===nx&&s.y===ny)){
+                this.dead = true; return;
+            }
+            this.snake.unshift({x:nx, y:ny});
+            if(nx===this.apple.x && ny===this.apple.y){
+                this.won = true;
+            } else {
+                this.snake.pop();
+            }
+        }
+    },
+    draw(c, gw, gh){
+        // Border
+        c.strokeStyle = '#333';
+        c.strokeRect(this.offX-1, this.offY-1, this.cols*this.gridS+2, this.rows*this.gridS+2);
+        // Grid faint
+        c.fillStyle = '#111';
+        c.fillRect(this.offX, this.offY, this.cols*this.gridS, this.rows*this.gridS);
+        // Apple
+        c.fillStyle = COLORS.red;
+        c.beginPath();
+        c.arc(this.offX + this.apple.x*this.gridS + this.gridS/2, this.offY + this.apple.y*this.gridS + this.gridS/2, this.gridS/2-2, 0, Math.PI*2);
+        c.fill();
+        // Snake
+        this.snake.forEach((s,i) => {
+            c.fillStyle = i===0 ? '#4ade80' : COLORS.green;
+            c.fillRect(this.offX + s.x*this.gridS+1, this.offY + s.y*this.gridS+1, this.gridS-2, this.gridS-2);
+        });
+    },
+    checkWin(){ return this.won; },
+    checkFail(){ return this.dead; }
+};
+
+/* ── 8. SMASH! ──────────────────────────────────────── */
+const smashGame = {
+    name: 'SMASH!', color: COLORS.yellow, instruction: 'Move paddle to break all bricks!',
+    init(gw, gh, spd){
+        this.padW = 80; this.padH = 10; this.padX = gw/2 - this.padW/2; this.padY = gh - 60;
+        this.bx = gw/2; this.by = this.padY - 15;
+        this.bvx = 3 * spd * (Math.random()>0.5?1:-1);
+        this.bvy = -4 * spd; this.br = 6;
+        this.bricks = [];
+        const cols = 6, rows = 2, bw = Math.floor(gw*0.7/cols), bh = 18;
+        const ox = (gw - cols*bw)/2, oy = gh * 0.25;
+        for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+            this.bricks.push({x:ox+c*bw, y:oy+r*(bh+4), w:bw-4, h:bh, alive:true, color:r===0?COLORS.yellow:COLORS.orange});
+        }
+        this.won = false; this.lost = false; this.spd = spd;
+    },
+    update(dt){
+        const gw = GW(), gh = GH();
+        // Paddle
+        if(keys['ArrowLeft']||keys['a']) this.padX -= 6 * this.spd;
+        if(keys['ArrowRight']||keys['d']) this.padX += 6 * this.spd;
+        if(mouseDown) this.padX += (mouseX - this.padX - this.padW/2) * 0.3;
+        this.padX = Math.max(0, Math.min(gw-this.padW, this.padX));
+        // Ball
+        this.bx += this.bvx; this.by += this.bvy;
+        if(this.bx-this.br<0){this.bx=this.br;this.bvx*=-1;}
+        if(this.bx+this.br>gw){this.bx=gw-this.br;this.bvx*=-1;}
+        if(this.by-this.br<0){this.by=this.br;this.bvy*=-1;}
+        // Paddle bounce
+        if(this.bvy>0 && this.by+this.br>=this.padY && this.by+this.br<=this.padY+this.padH+5 &&
+           this.bx>=this.padX && this.bx<=this.padX+this.padW){
+            this.bvy *= -1;
+            this.bvx += ((this.bx - this.padX - this.padW/2) / this.padW) * 3;
+            sfxAction();
+        }
+        // Brick collision
+        for(const b of this.bricks){
+            if(!b.alive) continue;
+            if(this.bx+this.br>b.x && this.bx-this.br<b.x+b.w && this.by+this.br>b.y && this.by-this.br<b.y+b.h){
+                b.alive = false; this.bvy *= -1;
+                sfxAction();
+                break;
+            }
+        }
+        if(this.bricks.every(b=>!b.alive)) this.won = true;
+        if(this.by > gh + 20) this.lost = true;
+    },
+    draw(c, gw, gh){
+        // Bricks
+        for(const b of this.bricks){
+            if(!b.alive) continue;
+            c.fillStyle = b.color;
+            c.fillRect(b.x, b.y, b.w, b.h);
+            c.fillStyle = 'rgba(255,255,255,0.2)';
+            c.fillRect(b.x, b.y, b.w, 3);
+        }
+        // Paddle
+        c.fillStyle = '#fff';
+        c.fillRect(this.padX, this.padY, this.padW, this.padH);
+        // Ball
+        c.fillStyle = COLORS.yellow;
+        c.beginPath(); c.arc(this.bx, this.by, this.br, 0, Math.PI*2); c.fill();
+    },
+    checkWin(){ return this.won; },
+    checkFail(){ return this.lost; }
+};
+
+/* ── 9. MATCH! ──────────────────────────────────────── */
+const matchGame = {
+    name: 'MATCH!', color: COLORS.orange, instruction: 'Watch, then repeat the sequence!',
+    init(gw, gh, spd){
+        this.pads = [
+            { x: gw*0.2, y: gh*0.4, color: '#ef4444', note: 330 },
+            { x: gw*0.4, y: gh*0.4, color: '#22c55e', note: 440 },
+            { x: gw*0.6, y: gh*0.4, color: '#3b82f6', note: 550 },
+            { x: gw*0.8, y: gh*0.4, color: '#fbbf24', note: 660 },
+        ];
+        this.padR = Math.min(40, gw * 0.08);
+        this.seqLen = 3;
+        this.sequence = [];
+        for(let i=0;i<this.seqLen;i++) this.sequence.push(randInt(0, 3));
+        this.phase = 'show'; // show, input
+        this.showIdx = 0; this.showTimer = 0;
+        this.showDur = Math.max(0.25, 0.5 / spd);
+        this.showGap = Math.max(0.15, 0.3 / spd);
+        this.inputIdx = 0;
+        this.activeIdx = -1; this.activeTimer = 0;
+        this.won = false; this.lost = false;
+        this.inGap = false;
+    },
+    update(dt){
+        if(this.phase === 'show'){
+            this.showTimer += dt;
+            if(!this.inGap){
+                this.activeIdx = this.sequence[this.showIdx];
+                if(this.showTimer >= this.showDur){
+                    this.activeIdx = -1;
+                    this.inGap = true;
+                    this.showTimer = 0;
+                }
+            } else {
+                if(this.showTimer >= this.showGap){
+                    this.showTimer = 0;
+                    this.inGap = false;
+                    this.showIdx++;
+                    if(this.showIdx >= this.seqLen){
+                        this.phase = 'input';
+                        this.activeIdx = -1;
+                    }
+                }
+            }
+        } else if(this.phase === 'input'){
+            this.activeTimer -= dt;
+            if(this.activeTimer <= 0) this.activeIdx = -1;
+            if(mouseClicked){
+                for(let i=0;i<this.pads.length;i++){
+                    const p = this.pads[i];
+                    if(dist(mouseX, mouseY, p.x, p.y) < this.padR + 10){
+                        this.activeIdx = i;
+                        this.activeTimer = 0.2;
+                        tone(p.note, 'square', 0.15, 0.12);
+                        if(i === this.sequence[this.inputIdx]){
+                            this.inputIdx++;
+                            if(this.inputIdx >= this.seqLen) this.won = true;
+                        } else {
+                            this.lost = true;
+                        }
+                        break;
+                    }
+                }
+            }
+            // Keyboard: 1-4
+            for(let k=0;k<4;k++){
+                if(keys[String(k+1)]){
+                    keys[String(k+1)] = false;
+                    this.activeIdx = k;
+                    this.activeTimer = 0.2;
+                    tone(this.pads[k].note, 'square', 0.15, 0.12);
+                    if(k === this.sequence[this.inputIdx]){
+                        this.inputIdx++;
+                        if(this.inputIdx >= this.seqLen) this.won = true;
+                    } else {
+                        this.lost = true;
+                    }
+                }
+            }
+        }
+    },
+    draw(c, gw, gh){
+        // Phase text
+        const phaseText = this.phase === 'show' ? 'WATCH...' : 'YOUR TURN!';
+        drawText(phaseText, gw/2, gh*0.25, 14, this.phase==='show'?'#888':'#fff');
+        // Pads
+        for(let i=0;i<this.pads.length;i++){
+            const p = this.pads[i];
+            const active = this.activeIdx === i;
+            c.save();
+            if(active){ c.shadowColor = p.color; c.shadowBlur = 25; }
+            c.fillStyle = active ? p.color : p.color + '66';
+            c.beginPath(); c.arc(p.x, p.y, this.padR, 0, Math.PI*2); c.fill();
+            c.restore();
+            // Key hint during input
+            if(this.phase === 'input'){
+                drawText(String(i+1), p.x, p.y + this.padR + 20, 10, '#555');
+            }
+        }
+        // Progress dots
+        const dotY = gh * 0.6;
+        for(let i=0;i<this.seqLen;i++){
+            c.fillStyle = i < this.inputIdx ? COLORS.green : '#333';
+            c.beginPath(); c.arc(gw/2 + (i-this.seqLen/2+0.5)*25, dotY, 5, 0, Math.PI*2); c.fill();
+        }
+    },
+    checkWin(){ return this.won; },
+    checkFail(){ return this.lost; }
+};
+
+/* ── 10. SHOOT! ─────────────────────────────────────── */
+const shootGame = {
+    name: 'SHOOT!', color: COLORS.purple, instruction: 'Space/click to shoot the alien!',
+    init(gw, gh, spd){
+        this.shipX = gw/2; this.shipY = gh - 50; this.shipW = 30;
+        this.alien = { x: gw/2, y: 60, w: 30, h: 20, vx: 2 * spd, vy: 0.5 * spd };
+        this.bullet = null;
+        this.won = false; this.lost = false; this.shotCD = 0;
+    },
+    update(dt){
+        const gw = GW(), gh = GH();
+        const speed = 5;
+        if(keys['ArrowLeft']||keys['a']) this.shipX -= speed;
+        if(keys['ArrowRight']||keys['d']) this.shipX += speed;
+        if(mouseDown) this.shipX += (mouseX - this.shipX) * 0.2;
+        this.shipX = Math.max(20, Math.min(gw-20, this.shipX));
+        this.shotCD -= dt;
+        if((keys[' '] || mouseClicked) && !this.bullet && this.shotCD <= 0){
+            this.bullet = { x: this.shipX, y: this.shipY - 15, vy: -8 };
+            this.shotCD = 0.3;
+            sfxAction();
+        }
+        // Bullet
+        if(this.bullet){
+            this.bullet.y += this.bullet.vy;
+            if(this.bullet.y < -10) this.bullet = null;
+            else {
+                const a = this.alien;
+                if(this.bullet.x > a.x-a.w/2 && this.bullet.x < a.x+a.w/2 &&
+                   this.bullet.y > a.y-a.h/2 && this.bullet.y < a.y+a.h/2){
+                    this.won = true;
+                }
+            }
+        }
+        // Alien movement
+        this.alien.x += this.alien.vx;
+        this.alien.y += this.alien.vy;
+        if(this.alien.x < 30 || this.alien.x > gw - 30) this.alien.vx *= -1;
+        if(this.alien.y > gh - 80) this.lost = true;
+    },
+    draw(c, gw, gh){
+        // Ship
+        c.fillStyle = COLORS.green;
+        c.beginPath();
+        c.moveTo(this.shipX, this.shipY - 15);
+        c.lineTo(this.shipX - 15, this.shipY + 5);
+        c.lineTo(this.shipX + 15, this.shipY + 5);
+        c.closePath(); c.fill();
+        c.fillRect(this.shipX - 2, this.shipY - 18, 4, 6);
+        // Alien
+        if(!this.won){
+            const a = this.alien;
+            c.fillStyle = COLORS.purple;
+            c.fillRect(a.x-a.w/2, a.y-a.h/2, a.w, a.h);
+            // Eyes
+            c.fillStyle = '#fff';
+            c.fillRect(a.x-8, a.y-5, 5, 5);
+            c.fillRect(a.x+3, a.y-5, 5, 5);
+            // Tentacles
+            c.fillStyle = COLORS.purple;
+            c.fillRect(a.x-a.w/2-5, a.y+a.h/2, 6, 8);
+            c.fillRect(a.x+a.w/2-1, a.y+a.h/2, 6, 8);
+        }
+        // Bullet
+        if(this.bullet){
+            c.fillStyle = COLORS.yellow;
+            c.fillRect(this.bullet.x-2, this.bullet.y, 4, 10);
+        }
+    },
+    checkWin(){ return this.won; },
+    checkFail(){ return this.lost; }
+};
+
+/* ════════════════════════════════════════════════════════
+   GAME MANAGER
+   ════════════════════════════════════════════════════════ */
+const ALL_MICROGAMES = [dodgeGame, stackGame, whackGame, crossGame, returnGame, sweepGame, eatGame, smashGame, matchGame, shootGame];
+
+const STATE = {
+    mode: 'title',   // title, ready, play, win, fail, gameover, milestone
+    round: 0,
+    score: 0,
+    currentGame: null,
+    timer: 0,
+    maxTime: DIFF.baseTime,
+    speed: 1,
+    transition: 0,
+    shakeTimer: 0,
+    shakeIntensity: 0,
+    lastGames: [],
+    milestoneTimer: 0,
+    milestoneNum: 0,
+    particles: [],
+};
+
+function pickGame(){
+    let pool = ALL_MICROGAMES.filter(g => !STATE.lastGames.includes(g));
+    if(pool.length === 0) pool = ALL_MICROGAMES;
+    const game = pool[randInt(0, pool.length - 1)];
+    STATE.lastGames.push(game);
+    if(STATE.lastGames.length > 3) STATE.lastGames.shift();
+    return game;
+}
+
+function startRound(){
+    STATE.round++;
+    STATE.currentGame = pickGame();
+    STATE.speed = 1 + (STATE.round - 1) * 0.08;
+    STATE.maxTime = Math.max(3, DIFF.baseTime * Math.pow(DIFF.speedUp, Math.floor((STATE.round-1)/3)));
+    STATE.timer = STATE.maxTime;
+    STATE.currentGame.init(W, H, STATE.speed);
+    STATE.mode = 'ready';
+    STATE.transition = 1.2;
+    sfxReady();
+}
+
+function startGame(){
+    STATE.round = 0; STATE.score = 0; STATE.speed = 1;
+    STATE.lastGames = []; STATE.particles = [];
+    STATE.maxTime = DIFF.baseTime;
+    startRound();
+}
+
+function triggerShake(intensity, dur){
+    STATE.shakeTimer = dur;
+    STATE.shakeIntensity = intensity;
+}
+
+function spawnParticles(x, y, count, color, spread=3){
+    for(let i=0;i<count;i++){
+        STATE.particles.push({
+            x, y, vx: (Math.random()-0.5)*spread*2, vy: (Math.random()-0.5)*spread*2 - 2,
+            life: 0.5 + Math.random()*0.5, maxLife: 0.5 + Math.random()*0.5,
+            color, size: 2 + Math.random()*4
+        });
+    }
+}
+
+/* ── Title screen ───────────────────────────────────── */
+let titleAnim = 0;
+function drawTitle(dt){
+    titleAnim += dt;
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, W, H);
+
+    // Floating particles bg
+    for(let i=0;i<30;i++){
+        const t = titleAnim + i*0.5;
+        const px = (Math.sin(t*0.3+i)*0.4+0.5)*W;
+        const py = (Math.cos(t*0.2+i*0.7)*0.4+0.5)*H;
+        ctx.fillStyle = `hsla(${(i*30+titleAnim*20)%360},80%,60%,0.15)`;
+        ctx.beginPath(); ctx.arc(px, py, 3+Math.sin(t)*2, 0, Math.PI*2); ctx.fill();
+    }
+
+    // Bloom special badge
+    const bloomY = H*0.28;
+    ctx.save();
+    ctx.shadowColor = '#ff6b9d'; ctx.shadowBlur = 30;
+    ctx.font = `${Math.floor(W*0.04)}px 'Press Start 2P'`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ff6b9d';
+    ctx.fillText('🌸 BLOOM SPECIAL 🌸', W/2, bloomY);
+    ctx.restore();
+
+    // Title
+    const titleY = H*0.42;
+    const pulse = Math.sin(titleAnim * 3) * 0.1 + 1;
+    ctx.save();
+    ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 40 * pulse;
+    ctx.font = `${Math.floor(W*0.1)}px 'Press Start 2P'`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('MEGA', W/2, titleY);
+    ctx.shadowColor = '#ff6b9d'; ctx.shadowBlur = 40 * pulse;
+    ctx.fillStyle = '#ff6b9d';
+    ctx.fillText('MIX', W/2, titleY + W*0.11);
+    ctx.restore();
+
+    // Subtitle
+    drawText('10 MICROGAMES • 1 LIFE • INFINITE SPEED', W/2, H*0.62, Math.max(7, Math.floor(W*0.018)), '#888');
+
+    // Difficulty
+    drawText(`DIFFICULTY: ${diffKey.toUpperCase()}`, W/2, H*0.69, Math.max(7, Math.floor(W*0.018)), diffKey==='easy'?'#22c55e':diffKey==='hard'?'#ef4444':'#888');
+
+    // Play prompt
+    const blink = Math.sin(titleAnim * 4) > 0;
+    if(blink){
+        drawTextGlow('PRESS SPACE / TAP TO START', W/2, H*0.80, Math.max(8, Math.floor(W*0.022)), '#22d3ee', '#22d3ee');
+    }
+
+    // Controls hint
+    drawText('ARROWS/WASD • MOUSE/TOUCH', W/2, H*0.90, Math.max(6, Math.floor(W*0.015)), '#444');
+}
+
+/* ── Ready screen ───────────────────────────────────── */
+function drawReady(dt){
+    STATE.transition -= dt;
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, W, H);
+
+    const game = STATE.currentGame;
+    const progress = 1 - STATE.transition / 1.2;
+
+    // Round number
+    drawText(`ROUND ${STATE.round}`, W/2, H*0.25, Math.max(10, Math.floor(W*0.03)), '#555');
+
+    // Game name with color
+    const nameScale = Math.min(1, progress * 3);
+    const nameSize = Math.floor(W * 0.08 * nameScale);
+    drawTextGlow(game.name, W/2, H*0.43, nameSize, game.color, game.color);
+
+    // Instruction
+    if(progress > 0.3){
+        drawText(game.instruction, W/2, H*0.57, Math.max(8, Math.floor(W*0.02)), '#aaa');
+    }
+
+    // READY flash
+    if(progress > 0.5){
+        const flash = Math.sin(progress * 20) > 0;
+        if(flash) drawTextGlow('READY?', W/2, H*0.72, Math.floor(W*0.05), '#fbbf24', '#fbbf24');
+    }
+
+    // Speed indicator
+    const speedText = `SPEED: x${STATE.speed.toFixed(1)}`;
+    drawText(speedText, W/2, H*0.85, Math.max(7, Math.floor(W*0.018)), STATE.speed > 2 ? COLORS.red : '#666');
+
+    if(STATE.transition <= 0){
+        STATE.mode = 'play';
+        STATE.timer = STATE.maxTime;
+    }
+}
+
+/* ── Play ───────────────────────────────────────────── */
+function updatePlay(dt){
+    STATE.timer -= dt;
+    STATE.currentGame.update(dt);
+
+    if(STATE.currentGame.checkWin()){
+        STATE.mode = 'win';
+        STATE.transition = 0.6;
+        STATE.score = STATE.round;
+        sfxWin();
+        spawnParticles(W/2, H/2, 20, COLORS.green, 5);
+        // Check milestone
+        if([10,25,50,75,100].includes(STATE.round)){
+            STATE.milestoneNum = STATE.round;
+            STATE.milestoneTimer = 1.5;
+            sfxMilestone();
+            spawnParticles(W/2, H/3, 40, COLORS.yellow, 8);
+        }
+        return;
+    }
+    if(STATE.currentGame.checkFail() || STATE.timer <= 0){
+        STATE.mode = 'fail';
+        STATE.transition = 1.0;
+        sfxFail();
+        triggerShake(8, 0.4);
+        spawnParticles(W/2, H/2, 30, COLORS.red, 6);
+        return;
+    }
+}
+
+function drawPlay(dt){
+    const game = STATE.currentGame;
+
+    // Game area bg
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, W, H);
+
+    // Draw microgame
+    game.draw(ctx, W, H);
+
+    // Timer bar at top
+    const timerPct = Math.max(0, STATE.timer / STATE.maxTime);
+    const barH = 6;
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, W, barH);
+    const barColor = timerPct > 0.5 ? COLORS.green : timerPct > 0.25 ? COLORS.yellow : COLORS.red;
+    ctx.fillStyle = barColor;
+    ctx.fillRect(0, 0, W * timerPct, barH);
+    // Pulse when low
+    if(timerPct < 0.3){
+        ctx.fillStyle = `rgba(239,68,68,${0.1 + Math.sin(Date.now()*0.01)*0.05})`;
+        ctx.fillRect(0, 0, W, H);
+    }
+
+    // HUD
+    drawText(game.name, W/2, 22, Math.max(8, Math.floor(W*0.025)), game.color + '88');
+    drawText(`ROUND ${STATE.round}`, 60, 22, 8, '#444', 'left');
+
+    // Timer tick sound
+    if(STATE.timer <= 3 && STATE.timer > 0 && Math.floor(STATE.timer * 2) !== Math.floor((STATE.timer + dt) * 2)){
+        sfxTick();
+    }
+}
+
+/* ── Win transition ─────────────────────────────────── */
+function drawWin(dt){
+    STATE.transition -= dt;
+    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, W, H);
+
+    // Flash
+    const flash = STATE.transition / 0.6;
+    ctx.fillStyle = `rgba(34,197,94,${flash * 0.15})`;
+    ctx.fillRect(0, 0, W, H);
+
+    drawTextGlow('✓ CLEAR!', W/2, H*0.45, Math.floor(W*0.07), COLORS.green, COLORS.green);
+
+    // Milestone
+    if(STATE.milestoneTimer > 0){
+        STATE.milestoneTimer -= dt;
+        const mAlpha = Math.min(1, STATE.milestoneTimer * 2);
+        ctx.save();
+        ctx.globalAlpha = mAlpha;
+        drawTextGlow(`🔥 ${STATE.milestoneNum} ROUNDS! 🔥`, W/2, H*0.6, Math.floor(W*0.035), COLORS.yellow, COLORS.yellow);
+        ctx.restore();
+    }
+
+    if(STATE.transition <= 0) startRound();
+}
+
+/* ── Fail transition ────────────────────────────────── */
+function drawFail(dt){
+    STATE.transition -= dt;
+    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, W, H);
+
+    const flash = STATE.transition / 1.0;
+    ctx.fillStyle = `rgba(239,68,68,${flash * 0.2})`;
+    ctx.fillRect(0, 0, W, H);
+
+    drawTextGlow('✗ FAIL!', W/2, H*0.45, Math.floor(W*0.08), COLORS.red, COLORS.red);
+
+    if(STATE.transition <= 0){
+        STATE.mode = 'gameover';
+        showGameOver();
+    }
+}
+
+/* ── Game Over ──────────────────────────────────────── */
+function showGameOver(){
+    const overlay = document.getElementById('overlay');
+    const score = STATE.score;
+    document.getElementById('overScore').textContent = `You survived ${score} round${score!==1?'s':''}!`;
+
+    const rank = saveScore('megamix', score, diffKey);
+    const hsEl = document.getElementById('overHS');
+    if(rank > 0){
+        hsEl.style.display = 'block';
+        hsEl.textContent = `🏆 NEW #${rank} HIGH SCORE!`;
+        showHighScoreBanner(rank);
+        playHighScoreChime(muted);
+    } else {
+        hsEl.style.display = 'none';
+    }
+    overlay.classList.add('show');
+}
+
+/* ── Particles ──────────────────────────────────────── */
+function updateParticles(dt){
+    for(const p of STATE.particles){
+        p.x += p.vx; p.y += p.vy;
+        p.vy += 5 * dt; // gravity
+        p.life -= dt;
+    }
+    STATE.particles = STATE.particles.filter(p => p.life > 0);
+}
+function drawParticles(){
+    for(const p of STATE.particles){
+        const alpha = p.life / p.maxLife;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+}
+
+/* ── Click tracking (one-frame flag) ────────────────── */
+let _mcFlag = false;
+canvas.addEventListener('mousedown', () => { _mcFlag = true; }, true);
+canvas.addEventListener('touchstart', () => { _mcFlag = true; }, true);
+
+/* ── Title start handler ────────────────────────────── */
+function handleStart(){
+    if(STATE.mode === 'title'){
+        if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        startGame();
+    }
+}
+window.addEventListener('keydown', e => {
+    if(e.key === ' ' || e.key === 'Enter') handleStart();
+});
+canvas.addEventListener('mousedown', handleStart);
+canvas.addEventListener('touchstart', handleStart, {passive: true});
+
+/* ── Main loop ──────────────────────────────────────── */
+let lastTime = 0;
+function mainLoop(ts){
+    const dt = Math.min(0.05, (ts - lastTime) / 1000);
+    lastTime = ts;
+
+    // Consume click flag for this frame
+    mouseClicked = _mcFlag;
+    _mcFlag = false;
+
+    // Screen shake
+    if(STATE.shakeTimer > 0){
+        STATE.shakeTimer -= dt;
+        const sx = (Math.random()-0.5) * STATE.shakeIntensity;
+        const sy = (Math.random()-0.5) * STATE.shakeIntensity;
+        ctx.save();
+        ctx.translate(sx, sy);
+    }
+
+    switch(STATE.mode){
+        case 'title': drawTitle(dt); break;
+        case 'ready': drawReady(dt); break;
+        case 'play': updatePlay(dt); drawPlay(dt); break;
+        case 'win': drawWin(dt); break;
+        case 'fail': drawFail(dt); break;
+        case 'gameover': break;
+    }
+
+    updateParticles(dt);
+    drawParticles();
+
+    if(STATE.shakeTimer > 0) ctx.restore();
+
+    requestAnimationFrame(mainLoop);
+}
+
+/* ── Replay button ──────────────────────────────────── */
+document.getElementById('btnReplay').addEventListener('click', () => {
+    document.getElementById('overlay').classList.remove('show');
+    startGame();
+});
+
+/* ── Start ──────────────────────────────────────────── */
+requestAnimationFrame(mainLoop);
+</script>
+</body>
+</html>
