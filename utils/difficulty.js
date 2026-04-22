@@ -95,6 +95,11 @@ export function getDifficultyConfig(gameName, level = null) {
             easy:   { ballSpeed: 4,   paddleSpeed: 4.8, paddleHeight: 90, accel: 1.03, maxSpeed: 12 },
             normal: { ballSpeed: 5,   paddleSpeed: 4.2, paddleHeight: 70, accel: 1.05, maxSpeed: 15 },
             hard:   { ballSpeed: 6.5, paddleSpeed: 3.6, paddleHeight: 55, accel: 1.07, maxSpeed: 18 },
+        },
+        memory: {
+            easy:   { rows: 4, cols: 4, pairs: 8,  scoreMultiplier: 1   },
+            normal: { rows: 6, cols: 6, pairs: 18, scoreMultiplier: 1.5 },
+            hard:   { rows: 8, cols: 8, pairs: 32, scoreMultiplier: 2   },
         }
     };
 
