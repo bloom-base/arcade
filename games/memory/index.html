@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MEMORY — arcade</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a0a;
+            color: #fafafa;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Press Start 2P', monospace;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            padding: 3.5rem 1rem 1rem;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent 0, transparent 3px,
+                rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
+            );
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* ── Fixed buttons ── */
+        .back-btn {
+            position: fixed;
+            top: 1.25rem;
+            left: 1.25rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+            color: #444;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 0.875rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .back-btn:hover { color: #fafafa; border-color: #555; }
+
+        .mute-btn {
+            position: fixed;
+            top: 1.25rem;
+            right: 1.25rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.5rem;
+            color: #444;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            padding: 0.5rem 0.875rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+        }
+        .mute-btn:hover { color: #fafafa; border-color: #555; }
+        .mute-btn.muted { color: #ef4444; border-color: #7f1d1d; }
+
+        /* ── Game wrap ── */
+        #game-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        #title {
+            font-size: clamp(0.55rem, 2.5vw, 0.875rem);
+            letter-spacing: 0.25em;
+            color: #e879f9;
+            text-shadow: 0 0 24px rgba(232,121,249,0.6);
+            margin-bottom: 0.25rem;
+        }
+
+        /* ── Difficulty selector ── */
+        #diff-row {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .diff-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.45rem;
+            padding: 0.4rem 0.65rem;
+            border: 1px solid #333;
+            background: transparent;
+            color: #555;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s;
+        }
+        .diff-btn:hover { color: #aaa; border-color: #555; }
+        .diff-btn.active { color: #e879f9; border-color: #e879f9; }
+
+        /* ── HUD ── */
+        #hud {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0 0.25rem;
+            gap: 0.5rem;
+        }
+
+        .hud-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            min-width: 80px;
+        }
+
+        .hud-label {
+            font-size: 0.35rem;
+            color: #444;
+            letter-spacing: 0.1em;
+        }
+
+        .hud-value {
+            font-size: clamp(0.6rem, 2vw, 0.875rem);
+            color: #e879f9;
+            text-shadow: 0 0 12px rgba(232,121,249,0.5);
+            min-width: 3ch;
+            text-align: center;
+        }
+
+        #reset-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(0.5rem, 1.5vw, 0.65rem);
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #333;
+            background: transparent;
+            color: #666;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: color 0.15s, border-color 0.15s, text-shadow 0.15s;
+        }
+        #reset-btn:hover {
+            color: #e879f9;
+            border-color: #e879f9;
+            text-shadow: 0 0 10px rgba(232,121,249,0.5);
+        }
+
+        /* ── Grid ── */
+        #grid {
+            display: grid;
+            gap: 6px;
+            perspective: 800px;
+        }
+
+        /* ── Card ── */
+        .card {
+            width: var(--card-size);
+            height: var(--card-size);
+            cursor: pointer;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.4s ease;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched .card-front {
+            border-color: #4ade80;
+            box-shadow: 0 0 16px rgba(74,222,128,0.4), inset 0 0 12px rgba(74,222,128,0.1);
+        }
+
+        .card.matched .card-front .card-symbol {
+            text-shadow: 0 0 12px rgba(74,222,128,0.6);
+        }
+
+        .card-face {
+            position: absolute;
+            inset: 0;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+
+        .card-back {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .card:not(.flipped):not(.matched):hover .card-back {
+            border-color: #e879f9;
+            box-shadow: 0 0 10px rgba(232,121,249,0.3);
+        }
+
+        /* Retro pattern on card back */
+        .card-back::after {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border: 1px solid #2a2a2a;
+            border-radius: 2px;
+            background:
+                repeating-linear-gradient(
+                    45deg,
+                    transparent,
+                    transparent 3px,
+                    rgba(232,121,249,0.06) 3px,
+                    rgba(232,121,249,0.06) 4px
+                );
+        }
+
+        .card-back-icon {
+            font-size: var(--card-icon);
+            color: #444;
+            z-index: 1;
+            line-height: 1;
+        }
+
+        .card-front {
+            background: #111;
+            border: 1px solid #2a2a2a;
+            transform: rotateY(180deg);
+        }
+
+        .card-symbol {
+            font-size: var(--card-symbol);
+            line-height: 1;
+        }
+
+        .card.locked {
+            pointer-events: none;
+        }
+
+        /* Match pop animation */
+        @keyframes matchPop {
+            0% { transform: rotateY(180deg) scale(1); }
+            50% { transform: rotateY(180deg) scale(1.12); }
+            100% { transform: rotateY(180deg) scale(1); }
+        }
+        .card.match-anim {
+            animation: matchPop 0.35s ease;
+        }
+
+        /* ── Overlay ── */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.82);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            z-index: 60;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        #overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #overlay-title {
+            font-size: clamp(1rem, 5vw, 1.75rem);
+            letter-spacing: 0.2em;
+            color: #e879f9;
+            text-shadow: 0 0 30px rgba(232,121,249,0.7);
+        }
+
+        #overlay-sub {
+            font-size: clamp(0.4rem, 1.5vw, 0.6rem);
+            color: #555;
+            letter-spacing: 0.1em;
+            text-align: center;
+            line-height: 2;
+        }
+
+        #overlay-best {
+            font-size: clamp(0.35rem, 1.2vw, 0.55rem);
+            color: #e879f9;
+            letter-spacing: 0.1em;
+        }
+
+        #overlay-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(0.45rem, 1.5vw, 0.65rem);
+            padding: 0.75rem 1.25rem;
+            border: 1px solid #e879f9;
+            background: transparent;
+            color: #e879f9;
+            cursor: pointer;
+            letter-spacing: 0.1em;
+            transition: background 0.15s, color 0.15s;
+        }
+        #overlay-btn:hover { background: #e879f9; color: #000; }
+
+        /* ── Best scores ── */
+        #best-scores {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .best-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.4rem 0.6rem;
+            border: 1px solid #222;
+        }
+        .best-label { font-size: 0.3rem; color: #444; letter-spacing: 0.1em; }
+        .best-val   { font-size: 0.5rem; color: #e879f9; }
+
+        /* ── Responsive ── */
+        @media (max-width: 480px) {
+            body { padding: 3rem 0.5rem 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <a class="back-btn" href="../../index.html#games">&larr; BACK</a>
+    <button class="mute-btn" id="muteBtn">&#9834; SFX</button>
+
+    <div id="game-wrap">
+        <div id="title">MEMORY</div>
+
+        <div id="diff-row">
+            <button class="diff-btn active" data-diff="easy">EASY 4&times;4</button>
+            <button class="diff-btn" data-diff="normal">MEDIUM 6&times;6</button>
+            <button class="diff-btn" data-diff="hard">HARD 8&times;8</button>
+        </div>
+
+        <div id="hud">
+            <div class="hud-block">
+                <div class="hud-label">MOVES</div>
+                <div class="hud-value" id="moves">000</div>
+            </div>
+            <button id="reset-btn">NEW GAME</button>
+            <div class="hud-block">
+                <div class="hud-label">TIME</div>
+                <div class="hud-value" id="timer">000</div>
+            </div>
+        </div>
+
+        <div id="grid"></div>
+
+        <div id="best-scores">
+            <div class="best-item">
+                <div class="best-label">EASY BEST</div>
+                <div class="best-val" id="best-easy">---</div>
+            </div>
+            <div class="best-item">
+                <div class="best-label">MEDIUM BEST</div>
+                <div class="best-val" id="best-normal">---</div>
+            </div>
+            <div class="best-item">
+                <div class="best-label">HARD BEST</div>
+                <div class="best-val" id="best-hard">---</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <div id="overlay-title">YOU WIN!</div>
+        <div id="overlay-sub"></div>
+        <div id="overlay-best"></div>
+        <button id="overlay-btn">PLAY AGAIN</button>
+    </div>
+
+    <script type="module">
+    /* ── Audio ───────────────────────────────────────────── */
+    let muted = false;
+    let audioCtx = null;
+
+    function getAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        return audioCtx;
+    }
+
+    function tone(freq, type, dur, vol = 0.18, delay = 0) {
+        if (muted) return;
+        try {
+            const ctx = getAudio();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+            gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + dur + 0.01);
+        } catch(e) {}
+    }
+
+    const sfx = {
+        flip: () => {
+            tone(520, 'sine', 0.06, 0.12);
+            tone(780, 'sine', 0.05, 0.08, 0.04);
+        },
+        match: () => {
+            tone(660, 'square', 0.08, 0.14);
+            tone(880, 'square', 0.08, 0.14, 0.08);
+            tone(1100, 'square', 0.1, 0.12, 0.16);
+        },
+        noMatch: () => {
+            tone(300, 'triangle', 0.12, 0.1);
+            tone(240, 'triangle', 0.12, 0.08, 0.08);
+        },
+        win: () => {
+            [523, 659, 784, 1047, 1319].forEach((f, i) =>
+                tone(f, 'square', 0.15, 0.18, i * 0.1)
+            );
+        },
+        newBest: () => {
+            [784, 988, 1175, 1568].forEach((f, i) =>
+                tone(f, 'square', 0.15, 0.2, i * 0.12)
+            );
+        },
+    };
+
+    document.getElementById('muteBtn').addEventListener('click', () => {
+        muted = !muted;
+        document.getElementById('muteBtn').textContent = muted ? '\u2715 SFX' : '\u266A SFX';
+        document.getElementById('muteBtn').classList.toggle('muted', muted);
+    });
+
+    /* ── Symbols ─────────────────────────────────────────── */
+    const ALL_SYMBOLS = [
+        '\u2660', '\u2665', '\u2666', '\u2663',  // card suits
+        '\u2605', '\u263A', '\u266B', '\u2602',  // star, smiley, music, umbrella
+        '\u2622', '\u2638', '\u2658', '\u265F',  // radioactive, wheel, chess knight, chess pawn
+        '\u2690', '\u2691', '\u2694', '\u2696',  // flags, swords, scales
+        '\u269B', '\u26A1', '\u26C4', '\u26D4',  // atom, lightning, snowman, no-entry
+        '\u2702', '\u2708', '\u270E', '\u2764',  // scissors, plane, pencil, heart
+        '\u2620', '\u2603', '\u262F', '\u2618',  // skull, snowman, yinyang, clover
+        '\u2604', '\u2693', '\u2697', '\u26BD',  // comet, anchor, alembic, soccer
+        '\u2654', '\u2655', '\u2656', '\u2657',  // chess pieces
+    ];
+
+    /* ── Difficulty configs ─────────────────────────────── */
+    const CONFIGS = {
+        easy:   { rows: 4, cols: 4 },
+        normal: { rows: 6, cols: 6 },
+        hard:   { rows: 8, cols: 8 },
+    };
+
+    /* ── State ───────────────────────────────────────────── */
+    let difficulty = 'easy';
+    let cfg = CONFIGS[difficulty];
+    let cards = [];        // { id, symbol, matched }
+    let flippedIndices = [];
+    let matchedCount = 0;
+    let totalPairs = 0;
+    let moves = 0;
+    let locked = false;    // prevent clicks during flip-back
+    let started = false;
+    let timerVal = 0;
+    let timerID = null;
+
+    /* ── Persistence ─────────────────────────────────────── */
+    const STORAGE_KEY = 'arcade_memory_best';
+
+    function getBests() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+        catch { return {}; }
+    }
+    function saveBest(diff, moveCount) {
+        const bests = getBests();
+        if (!bests[diff] || moveCount < bests[diff]) {
+            bests[diff] = moveCount;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(bests));
+            return true;
+        }
+        return false;
+    }
+    function renderBests() {
+        const bests = getBests();
+        ['easy', 'normal', 'hard'].forEach(d => {
+            const el = document.getElementById('best-' + d);
+            el.textContent = bests[d] != null ? String(bests[d]).padStart(3, '0') : '---';
+        });
+    }
+
+    /* ── Timer ───────────────────────────────────────────── */
+    function startTimer() {
+        if (timerID) return;
+        timerID = setInterval(() => {
+            timerVal = Math.min(timerVal + 1, 999);
+            document.getElementById('timer').textContent = String(timerVal).padStart(3, '0');
+        }, 1000);
+    }
+    function stopTimer() {
+        clearInterval(timerID);
+        timerID = null;
+    }
+
+    /* ── Card sizing ─────────────────────────────────────── */
+    function computeCardSize() {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const availW = Math.min(vw - 24, 640);
+        const availH = vh - 260;
+        const gap = 6;
+        const byW = Math.floor((availW - (cfg.cols - 1) * gap) / cfg.cols);
+        const byH = Math.floor((availH - (cfg.rows - 1) * gap) / cfg.rows);
+        const size = Math.max(Math.min(byW, byH, 100), 28);
+        return size;
+    }
+
+    /* ── Shuffle ─────────────────────────────────────────── */
+    function shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    /* ── Build grid ──────────────────────────────────────── */
+    function buildGrid() {
+        const size = computeCardSize();
+        const grid = document.getElementById('grid');
+        grid.style.gridTemplateColumns = `repeat(${cfg.cols}, ${size}px)`;
+        document.documentElement.style.setProperty('--card-size', size + 'px');
+        document.documentElement.style.setProperty('--card-icon', Math.max(Math.floor(size * 0.3), 10) + 'px');
+        document.documentElement.style.setProperty('--card-symbol', Math.max(Math.floor(size * 0.45), 14) + 'px');
+
+        totalPairs = (cfg.rows * cfg.cols) / 2;
+        // Pick symbols for this game
+        const symbols = shuffle([...ALL_SYMBOLS]).slice(0, totalPairs);
+        // Create pairs and shuffle
+        const pairs = shuffle([...symbols, ...symbols]);
+        cards = pairs.map((sym, i) => ({ id: i, symbol: sym, matched: false }));
+
+        grid.innerHTML = '';
+        const frag = document.createDocumentFragment();
+        cards.forEach((card, i) => {
+            const el = document.createElement('div');
+            el.className = 'card';
+            el.dataset.idx = i;
+            el.innerHTML = `
+                <div class="card-face card-back">
+                    <span class="card-back-icon">?</span>
+                </div>
+                <div class="card-face card-front">
+                    <span class="card-symbol">${card.symbol}</span>
+                </div>
+            `;
+            frag.appendChild(el);
+        });
+        grid.appendChild(frag);
+    }
+
+    /* ── Card click ──────────────────────────────────────── */
+    function onCardClick(idx) {
+        if (locked) return;
+        const card = cards[idx];
+        if (card.matched) return;
+        if (flippedIndices.includes(idx)) return;
+
+        // Start timer on first click
+        if (!started) {
+            started = true;
+            startTimer();
+        }
+
+        // Flip the card
+        const el = document.querySelector(`.card[data-idx="${idx}"]`);
+        el.classList.add('flipped');
+        sfx.flip();
+        flippedIndices.push(idx);
+
+        if (flippedIndices.length === 2) {
+            moves++;
+            document.getElementById('moves').textContent = String(moves).padStart(3, '0');
+
+            const [i1, i2] = flippedIndices;
+            const c1 = cards[i1];
+            const c2 = cards[i2];
+
+            if (c1.symbol === c2.symbol) {
+                // Match!
+                c1.matched = true;
+                c2.matched = true;
+                matchedCount++;
+                locked = true;
+
+                setTimeout(() => {
+                    const el1 = document.querySelector(`.card[data-idx="${i1}"]`);
+                    const el2 = document.querySelector(`.card[data-idx="${i2}"]`);
+                    el1.classList.add('matched', 'match-anim');
+                    el2.classList.add('matched', 'match-anim');
+                    sfx.match();
+                    locked = false;
+                    flippedIndices = [];
+
+                    // Check win
+                    if (matchedCount === totalPairs) {
+                        stopTimer();
+                        setTimeout(() => showWin(), 400);
+                    }
+                }, 300);
+            } else {
+                // No match - flip back
+                locked = true;
+                setTimeout(() => {
+                    sfx.noMatch();
+                    const el1 = document.querySelector(`.card[data-idx="${i1}"]`);
+                    const el2 = document.querySelector(`.card[data-idx="${i2}"]`);
+                    el1.classList.remove('flipped');
+                    el2.classList.remove('flipped');
+                    locked = false;
+                    flippedIndices = [];
+                }, 800);
+            }
+        }
+    }
+
+    /* ── Event delegation ────────────────────────────────── */
+    document.getElementById('grid').addEventListener('click', e => {
+        const card = e.target.closest('.card');
+        if (!card) return;
+        onCardClick(parseInt(card.dataset.idx));
+    });
+
+    /* ── Win overlay ─────────────────────────────────────── */
+    function showWin() {
+        sfx.win();
+        const isNew = saveBest(difficulty, moves);
+        renderBests();
+
+        document.getElementById('overlay-sub').textContent =
+            `${moves} MOVES \u00B7 ${timerVal}s`;
+
+        if (isNew) {
+            document.getElementById('overlay-best').textContent = '\u2605 NEW BEST SCORE \u2605';
+            setTimeout(() => sfx.newBest(), 600);
+        } else {
+            const bests = getBests();
+            document.getElementById('overlay-best').textContent =
+                bests[difficulty] ? `BEST: ${bests[difficulty]} MOVES` : '';
+        }
+
+        document.getElementById('overlay').classList.add('show');
+    }
+
+    document.getElementById('overlay-btn').addEventListener('click', () => {
+        document.getElementById('overlay').classList.remove('show');
+        newGame();
+    });
+
+    /* ── New game ────────────────────────────────────────── */
+    function newGame() {
+        stopTimer();
+        timerVal = 0;
+        moves = 0;
+        matchedCount = 0;
+        flippedIndices = [];
+        locked = false;
+        started = false;
+
+        cfg = CONFIGS[difficulty];
+        document.getElementById('timer').textContent = '000';
+        document.getElementById('moves').textContent = '000';
+        buildGrid();
+    }
+
+    /* ── Difficulty buttons ──────────────────────────────── */
+    document.querySelectorAll('.diff-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            difficulty = btn.dataset.diff;
+            document.getElementById('overlay').classList.remove('show');
+            newGame();
+        });
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', () => {
+        document.getElementById('overlay').classList.remove('show');
+        newGame();
+    });
+
+    window.addEventListener('resize', () => {
+        const size = computeCardSize();
+        const grid = document.getElementById('grid');
+        grid.style.gridTemplateColumns = `repeat(${cfg.cols}, ${size}px)`;
+        document.documentElement.style.setProperty('--card-size', size + 'px');
+        document.documentElement.style.setProperty('--card-icon', Math.max(Math.floor(size * 0.3), 10) + 'px');
+        document.documentElement.style.setProperty('--card-symbol', Math.max(Math.floor(size * 0.45), 14) + 'px');
+    });
+
+    /* ── Init ────────────────────────────────────────────── */
+    renderBests();
+    newGame();
+    </script>
+</body>
+</html>
