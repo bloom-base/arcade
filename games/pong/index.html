@@ -129,6 +129,57 @@
         }
         #countdown.show { opacity: 1; }
 
+        /* ── Mode select screen ────────────────── */
+        #mode-select {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.92);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            gap: 1rem;
+            transition: opacity 0.35s ease;
+        }
+        #mode-select.hidden { opacity: 0; pointer-events: none; }
+
+        #mode-select .mode-title {
+            font-size: clamp(0.85rem, 3.5vw, 1.3rem);
+            letter-spacing: 0.25em;
+            color: #e879f9;
+            text-shadow: 0 0 24px rgba(232,121,249,0.55);
+            margin-bottom: 0.5rem;
+        }
+        #mode-select .mode-sub {
+            font-size: clamp(0.28rem, 1vw, 0.38rem);
+            color: #505050;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.5rem;
+        }
+
+        .mode-btn {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(0.38rem, 1.4vw, 0.52rem);
+            padding: 0.8rem 2rem;
+            cursor: pointer;
+            letter-spacing: 0.08em;
+            transition: all 0.15s;
+            display: block;
+            width: 14rem;
+            text-align: center;
+            background: transparent;
+            color: #737373;
+            border: 1px solid #333;
+        }
+        .mode-btn:hover { color: #fafafa; border-color: #555; transform: translateY(-1px); }
+        .mode-btn.active {
+            background: #e879f9;
+            color: #0a0a0a;
+            border-color: #e879f9;
+        }
+        .mode-btn.active:hover { background: #f0abfc; border-color: #f0abfc; }
+
         /* ── Game Over overlay ─────────────────── */
         #overlay {
             position: fixed;
@@ -199,12 +250,20 @@
     </div>
 </div>
 
+<div id="mode-select">
+    <div class="mode-title">PONG</div>
+    <div class="mode-sub">SELECT MODE</div>
+    <button class="mode-btn" id="mode2p">2 PLAYER</button>
+    <button class="mode-btn" id="modeCpu">VS CPU</button>
+</div>
+
 <div id="countdown"></div>
 
 <div id="overlay">
     <div id="overlay-winner"></div>
     <div id="overlay-final"></div>
     <button class="menu-btn primary" id="newGameBtn">PLAY AGAIN</button>
+    <button class="menu-btn secondary" id="changeModeBtn">CHANGE MODE</button>
     <a class="menu-btn secondary" href="../../index.html#games">← ARCADE</a>
 </div>
 
@@ -290,6 +349,9 @@ const WIN_TO  = 11;
 const P1_COL  = '#22d3ee';   // cyan
 const P2_COL  = '#e879f9';   // magenta
 
+// ── Mode ──────────────────────────────────────────────────
+let cpuMode = false;
+
 // ── State ─────────────────────────────────────────────────
 let p1Score = 0, p2Score = 0;
 let gameOver = false, paused = false;
@@ -324,6 +386,48 @@ window.addEventListener('keydown', e => {
     if (['ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// ── AI Opponent ───────────────────────────────────────────
+const AI = {
+    targetY: CH / 2,         // where the AI wants to move
+    reactionTimer: 0,        // frames until next target update
+    errorOffset: 0,          // slight misjudgement of target
+};
+
+function updateAI(dt) {
+    if (!cpuMode || paused || gameOver) return;
+
+    // How far the ball is from the AI's side (0 = at AI paddle, 1 = far away)
+    const distRatio = clamp(1 - (ball.x / CW), 0, 1);
+
+    // Update target less frequently when ball is far away
+    AI.reactionTimer -= dt;
+    if (AI.reactionTimer <= 0) {
+        // Recalculate target: ball Y + a small random error
+        const errorRange = PH * (0.15 + distRatio * 0.35); // bigger error when ball is far
+        AI.errorOffset = (Math.random() - 0.5) * errorRange;
+        // React faster when ball is close, lazier when far
+        AI.reactionTimer = 3 + distRatio * 8;
+    }
+
+    const targetY = ball.y + AI.errorOffset - PH / 2;
+    const paddleCenterY = p2.y + PH / 2;
+    const targetCenter = targetY + PH / 2;
+    const diff = targetCenter - paddleCenterY;
+
+    // Speed: faster when ball is near, slower when far away
+    // Lerp factor: 70-85% of max paddle speed, scaled by proximity
+    const urgency = 0.55 + (1 - distRatio) * 0.35; // 0.55 when far, 0.9 when close
+    const maxMove = DIFF.paddleSpeed * urgency * dt;
+
+    // Move toward target with capped speed (natural-looking smoothing)
+    if (Math.abs(diff) > 2) {
+        const move = clamp(diff, -maxMove, maxMove);
+        p2.y += move;
+    }
+
+    p2.y = clamp(p2.y, 0, CH - PH);
+}
 
 // ── Countdown ─────────────────────────────────────────────
 const cntEl = document.getElementById('countdown');
@@ -383,10 +487,15 @@ function update(ts) {
     const ps = DIFF.paddleSpeed * dt;
     if (keys['w'] || keys['W'])    p1.y -= ps;
     if (keys['s'] || keys['S'])    p1.y += ps;
-    if (keys['ArrowUp'])           p2.y -= ps;
-    if (keys['ArrowDown'])         p2.y += ps;
+    if (!cpuMode) {
+        if (keys['ArrowUp'])       p2.y -= ps;
+        if (keys['ArrowDown'])     p2.y += ps;
+    }
     p1.y = clamp(p1.y, 0, CH - PH);
-    p2.y = clamp(p2.y, 0, CH - PH);
+    if (!cpuMode) p2.y = clamp(p2.y, 0, CH - PH);
+
+    // AI paddle
+    updateAI(dt);
 
     // Ball
     ball.x += ball.dx * dt;
@@ -415,7 +524,8 @@ function update(ts) {
 function afterPoint(nextToRight) {
     if (p1Score >= WIN_TO || p2Score >= WIN_TO) {
         gameOver = true;
-        const winner = p1Score >= WIN_TO ? 'PLAYER 1' : 'PLAYER 2';
+        const p2Name = cpuMode ? 'CPU' : 'PLAYER 2';
+        const winner = p1Score >= WIN_TO ? 'PLAYER 1' : p2Name;
         const col    = p1Score >= WIN_TO ? P1_COL : P2_COL;
         showOverlay(`${winner} WINS!`, `${p1Score} — ${p2Score}`, col);
         sfx.win();
@@ -459,10 +569,11 @@ function draw() {
     ctx.fillText(p2Score, 3 * CW / 4, 18);
     ctx.shadowBlur = 0;
 
-    // Difficulty badge
+    // Difficulty + mode badge
     ctx.font      = '8px "Press Start 2P", monospace';
     ctx.fillStyle = '#252525';
-    ctx.fillText(diffKey.toUpperCase(), CW / 2, CH - 14);
+    const badge = diffKey.toUpperCase() + (cpuMode ? '  •  VS CPU' : '  •  2P');
+    ctx.fillText(badge, CW / 2, CH - 14);
 
     // Paddle 1
     ctx.fillStyle  = P1_COL;
@@ -505,6 +616,41 @@ function showOverlay(title, sub, color) {
 }
 
 document.getElementById('newGameBtn').addEventListener('click', startGame);
+document.getElementById('changeModeBtn').addEventListener('click', () => {
+    overlay.classList.remove('show');
+    modeSelect.classList.remove('hidden');
+    paused = true;
+    gameOver = false;
+});
+
+// ── Mode Select ───────────────────────────────────────────
+const modeSelect   = document.getElementById('mode-select');
+const controlsHint = document.getElementById('controls-hint');
+
+function setMode(isCpu) {
+    cpuMode = isCpu;
+    controlsHint.innerHTML = cpuMode
+        ? '<span><span class="hint-key">W</span><span class="hint-key">S</span> P1</span>' +
+          '<span>CPU 🤖</span>'
+        : '<span><span class="hint-key">W</span><span class="hint-key">S</span> P1</span>' +
+          '<span>P2 <span class="hint-key">↑</span><span class="hint-key">↓</span></span>';
+}
+
+function hideModeSelect() {
+    modeSelect.classList.add('hidden');
+}
+
+document.getElementById('mode2p').addEventListener('click', () => {
+    setMode(false);
+    hideModeSelect();
+    startGame();
+});
+
+document.getElementById('modeCpu').addEventListener('click', () => {
+    setMode(true);
+    hideModeSelect();
+    startGame();
+});
 
 // ── Init ──────────────────────────────────────────────────
 function startGame() {
@@ -513,12 +659,16 @@ function startGame() {
     gameOver = false;
     overlay.classList.remove('show');
     resetPaddles();
+    AI.reactionTimer = 0;
+    AI.errorOffset = 0;
+    AI.targetY = CH / 2;
     launchBall();
     paused = true;
     setTimeout(() => { paused = false; }, 600);
 }
 
-startGame();
+// Start loop but wait for mode selection
+paused = true;
 lastTs = performance.now();
 if (rafId) cancelAnimationFrame(rafId);
 rafId = requestAnimationFrame(loop);
