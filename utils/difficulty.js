@@ -100,6 +100,11 @@ export function getDifficultyConfig(gameName, level = null) {
             easy:   { rows: 4, cols: 4, pairs: 8,  scoreMultiplier: 1   },
             normal: { rows: 6, cols: 6, pairs: 18, scoreMultiplier: 1.5 },
             hard:   { rows: 8, cols: 8, pairs: 32, scoreMultiplier: 2   },
+        },
+        wordle: {
+            easy:   { scoreMultiplier: 1   },
+            normal: { scoreMultiplier: 1.5 },
+            hard:   { scoreMultiplier: 2   },
         }
     };
 
