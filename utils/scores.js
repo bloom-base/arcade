@@ -81,6 +81,22 @@ export function getAllScores() {
 }
 
 /**
+ * Aggregate scores across all games, sorted highest-first.
+ * Each entry includes the `game` key so the caller knows which game it came from.
+ * @param {number} [limit=5]  How many entries to return.
+ * @returns {{ game:string, score:number, difficulty:string, timestamp:number }[]}
+ */
+export function getTopScores(limit = 5) {
+    const all     = load();
+    const entries = [];
+    for (const [game, scores] of Object.entries(all)) {
+        for (const s of scores) entries.push({ game, ...s });
+    }
+    entries.sort((a, b) => b.score - a.score);
+    return entries.slice(0, limit);
+}
+
+/**
  * Submit a score.  Keeps only the top-5 per game.
  * @param {string} game
  * @param {number} score  – ignored if ≤ 0

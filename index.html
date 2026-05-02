@@ -388,8 +388,21 @@
         /* ── Leaderboard widget ────────────────────────── */
         .leaderboard {
             margin-top: 1.75rem;
-            border-top: 1px solid #1a1a1a;
-            padding-top: 1.25rem;
+            padding: 1rem 1.25rem 0.75rem;
+            border: 2px solid #333;
+            border-image: repeating-linear-gradient(
+                90deg, #facc15 0 4px, transparent 4px 8px,
+                #e879f9 8px 12px, transparent 12px 16px
+            ) 2;
+            background: linear-gradient(180deg, rgba(20,10,30,0.85), rgba(10,10,10,0.95));
+            position: relative;
+        }
+        .leaderboard::before {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border: 1px solid #222;
+            pointer-events: none;
         }
         .lb-header {
             display: flex;
@@ -399,19 +412,20 @@
         }
         .lb-title {
             font-family: 'Press Start 2P', monospace;
-            font-size: 0.42rem;
-            color: #3a3a3a;
+            font-size: 0.48rem;
+            color: #facc15;
             letter-spacing: 0.18em;
+            text-shadow: 0 0 8px rgba(250,204,21,0.5);
         }
         .lb-clear-btn {
             font-family: 'Press Start 2P', monospace;
-            font-size: 0.32rem;
-            color: #3a3a3a;
+            font-size: 0.28rem;
+            color: #555;
             background: transparent;
-            border: 1px solid #222;
-            padding: 0.3rem 0.65rem;
+            border: 1px solid #2a2a2a;
+            padding: 0.25rem 0.5rem;
             cursor: pointer;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.08em;
             transition: color 0.15s, border-color 0.15s;
         }
         .lb-clear-btn:hover { color: #ef4444; border-color: #7f1d1d; }
@@ -419,41 +433,49 @@
         .lb-empty {
             font-family: 'Press Start 2P', monospace;
             font-size: 0.34rem;
-            color: #222;
+            color: #555;
             text-align: center;
             padding: 1.25rem 0;
             letter-spacing: 0.1em;
         }
         .lb-entry {
             display: grid;
-            grid-template-columns: 1.4rem 4.5rem 1fr auto auto;
+            grid-template-columns: 1.2rem 4.2rem 1.6rem 1fr auto;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.45rem 0;
-            border-bottom: 1px solid #131313;
+            gap: 0.45rem;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid #1a1a1a;
         }
+        .lb-entry:last-child { border-bottom: none; }
         .lb-rank {
             font-family: 'Press Start 2P', monospace;
-            font-size: 0.32rem;
-            color: #2e2e2e;
+            font-size: 0.34rem;
+            color: #facc15;
+            text-shadow: 0 0 4px rgba(250,204,21,0.3);
         }
         .lb-game {
             font-family: 'Press Start 2P', monospace;
-            font-size: 0.36rem;
+            font-size: 0.34rem;
             letter-spacing: 0.04em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .lb-diff {
             font-family: 'Press Start 2P', monospace;
-            font-size: 0.28rem;
-            letter-spacing: 0.12em;
+            font-size: 0.26rem;
+            padding: 0.15rem 0.35rem;
+            border-radius: 2px;
+            text-align: center;
+            letter-spacing: 0.08em;
         }
-        .lb-diff.easy   { color: #22c55e; }
-        .lb-diff.normal { color: #555; }
-        .lb-diff.hard   { color: #ef4444; }
+        .lb-diff.easy   { color: #22c55e; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); }
+        .lb-diff.normal { color: #888;    background: rgba(136,136,136,0.1); border: 1px solid rgba(136,136,136,0.25); }
+        .lb-diff.hard   { color: #ef4444; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); }
         .lb-score {
             font-family: 'Press Start 2P', monospace;
-            font-size: 0.38rem;
-            color: #c0c0c0;
+            font-size: 0.4rem;
+            color: #e0e0e0;
             text-align: right;
         }
         .lb-time {
@@ -516,7 +538,7 @@
         <div class="leaderboard">
             <div class="lb-header">
                 <span class="lb-title">HIGH SCORES</span>
-                <button class="lb-clear-btn" id="clearScoresBtn">CLEAR SCORES</button>
+                <button class="lb-clear-btn" id="clearScoresBtn" aria-label="Clear leaderboard scores">CLEAR SCORES</button>
             </div>
             <div id="lbBody">
                 <!-- Populated by JS -->
@@ -529,7 +551,7 @@
 
 <script type="module">
 import { getDifficulty, setDifficulty } from './utils/difficulty.js';
-import { getAllScores, getScores, clearAllScores } from './utils/scores.js';
+import { getAllScores, getScores, getTopScores, clearAllScores } from './utils/scores.js';
 import { isMuted, toggleMute, playHover, playSelect, playBoop, playConfirm } from './utils/audio.js';
 
 /* ── Pixel-art SVG renderer ──────────────────────────────────
@@ -1234,16 +1256,12 @@ function timeAgo(ts) {
     return `${Math.floor(h / 24)}d ago`;
 }
 
-function renderLeaderboard() {
-    const all     = getAllScores();
-    const entries = [];
-    for (const [game, scores] of Object.entries(all)) {
-        for (const s of scores) entries.push({ game, ...s });
-    }
-    entries.sort((a, b) => b.timestamp - a.timestamp);
-    const top = entries.slice(0, 8);
+const DIFF_LABEL = { easy: 'E', normal: 'N', hard: 'H' };
 
+function renderLeaderboard() {
+    const top  = getTopScores(5);           // sorted highest-score-first
     const body = document.getElementById('lbBody');
+
     if (!top.length) {
         body.innerHTML = '<div class="lb-empty">NO SCORES YET — PLAY A GAME!</div>';
         return;
@@ -1252,7 +1270,7 @@ function renderLeaderboard() {
         <div class="lb-entry">
             <span class="lb-rank">#${i + 1}</span>
             <span class="lb-game" style="color:${GAME_COLOR[e.game] || '#666'}">${e.game.toUpperCase()}</span>
-            <span class="lb-diff ${e.difficulty}">${e.difficulty.toUpperCase()}</span>
+            <span class="lb-diff ${e.difficulty}" title="${e.difficulty}">${DIFF_LABEL[e.difficulty] || '?'}</span>
             <span class="lb-score">${e.score.toLocaleString()}</span>
             <span class="lb-time">${timeAgo(e.timestamp)}</span>
         </div>
@@ -1306,6 +1324,15 @@ document.querySelectorAll('.difficulty-btn').forEach(btn => {
 });
 document.getElementById('clearScoresBtn').addEventListener('click', playBoop);
 document.getElementById('footerResetBtn').addEventListener('click', playBoop);
+
+/* ── Auto-update on return from game ──────────────────── */
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && gameScreen.classList.contains('enter')) {
+        renderLeaderboard();
+        renderCards();
+        attachCardSounds();
+    }
+});
 
 /* ── Boot ─────────────────────────────────────────────── */
 renderCards();
