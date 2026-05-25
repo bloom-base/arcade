@@ -114,60 +114,7 @@
             color: #505050;
         }
 
-        /* ── Game Over overlay ─────────────────────────── */
-        #overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.88);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 200;
-            gap: 0.75rem;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.35s ease;
-        }
-        #overlay.show { opacity: 1; pointer-events: auto; }
-
-        #overlay-title {
-            font-size: clamp(0.85rem, 3.5vw, 1.3rem);
-            letter-spacing: 0.12em;
-            text-shadow: 0 0 30px currentColor;
-        }
-        #overlay-sub {
-            font-size: clamp(0.38rem, 1.4vw, 0.52rem);
-            color: #737373;
-            letter-spacing: 0.12em;
-            margin-bottom: 0.75rem;
-        }
-
-        .menu-btn {
-            font-family: 'Press Start 2P', monospace;
-            font-size: clamp(0.38rem, 1.4vw, 0.52rem);
-            padding: 0.7rem 1.6rem;
-            cursor: pointer;
-            letter-spacing: 0.08em;
-            transition: all 0.15s;
-            display: inline-block;
-        }
-        .menu-btn.primary {
-            background: #fbbf24;
-            color: #0a0a0a;
-            border: none;
-        }
-        .menu-btn.primary:hover {
-            background: #fcd34d;
-            transform: translateY(-1px);
-        }
-        .menu-btn.secondary {
-            background: transparent;
-            color: #737373;
-            border: 1px solid #333;
-            text-decoration: none;
-        }
-        .menu-btn.secondary:hover { color: #fafafa; border-color: #555; }
+        /* Game-over overlay is now handled by utils/gameover.js */
     </style>
 </head>
 <body>
@@ -185,16 +132,11 @@
     </div>
 </div>
 
-<div id="overlay">
-    <div id="overlay-title"></div>
-    <div id="overlay-sub"></div>
-    <button class="menu-btn primary" id="newGameBtn">PLAY AGAIN</button>
-    <a class="menu-btn secondary" href="../../index.html#games">← ARCADE</a>
-</div>
+<!-- Game-over overlay injected by utils/gameover.js -->
 
 <script type="module">
 import { getDifficulty } from '../../utils/difficulty.js';
-import { saveScore, playHighScoreChime, showHighScoreBanner } from '../../utils/scores.js';
+import { showGameOver, hideGameOver } from '../../utils/gameover.js';
 
 // ── Audio ──────────────────────────────────────────────────
 let muted = false;
@@ -561,12 +503,10 @@ function update(ts) {
             if (bricksLeft === 0) {
                 state = 'win';
                 sfx.win();
-                const winRank = saveScore('breakout', score, diffKey);
-                if (winRank > 0) {
-                    showHighScoreBanner(winRank);
-                    setTimeout(() => playHighScoreChime(muted), 700);
-                }
-                showOverlay('YOU WIN!', 'SCORE: ' + score, '#fbbf24');
+                showGameOver({
+                    score, game: 'breakout', difficulty: diffKey,
+                    title: 'YOU WIN!', onRestart: startGame, muted,
+                });
                 return;
             }
         } else {
@@ -582,12 +522,10 @@ function update(ts) {
             lives = 0;
             state = 'gameover';
             sfx.gameOver();
-            const goRank = saveScore('breakout', score, diffKey);
-            if (goRank > 0) {
-                showHighScoreBanner(goRank);
-                setTimeout(() => playHighScoreChime(muted), 550);
-            }
-            showOverlay('GAME OVER', 'SCORE: ' + score, '#ef4444');
+            showGameOver({
+                score, game: 'breakout', difficulty: diffKey,
+                onRestart: startGame, muted,
+            });
         } else {
             state     = 'dead';
             deadTimer = 90; // ~1.5 s at 60 fps
@@ -739,20 +677,6 @@ function loop(ts) {
     rafId = requestAnimationFrame(loop);
 }
 
-// ── Overlay ────────────────────────────────────────────────
-const overlay      = document.getElementById('overlay');
-const overlayTitle = document.getElementById('overlay-title');
-const overlaySub   = document.getElementById('overlay-sub');
-
-function showOverlay(title, sub, color) {
-    overlayTitle.textContent = title;
-    overlayTitle.style.color = color;
-    overlaySub.textContent   = sub;
-    overlay.classList.add('show');
-}
-
-document.getElementById('newGameBtn').addEventListener('click', startGame);
-
 // ── Init ───────────────────────────────────────────────────
 function startGame() {
     score      = 0;
@@ -765,7 +689,7 @@ function startGame() {
     ball.speed = DIFF.ballSpeed;
     buildBricks();
     resetBall();
-    overlay.classList.remove('show');
+    hideGameOver();
 }
 
 startGame();
