@@ -45,8 +45,7 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;border:1px solid #e
 #touch-controls .actions{display:flex;gap:8px;align-items:flex-end}
 @media(pointer:coarse){#touch-controls{display:block}#controls-hint{display:none}}
 
-/* CRT scanline effect */
-#game-wrap::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.07) 0px,rgba(0,0,0,.07) 1px,transparent 1px,transparent 3px);pointer-events:none;z-index:10}
+/* CRT effect is now applied by utils/crt-effect.js */
 </style>
 </head>
 <body>
@@ -99,6 +98,8 @@ canvas{image-rendering:pixelated;image-rendering:crisp-edges;border:1px solid #e
 
 <script type="module">
 import { saveScore, playHighScoreChime, showHighScoreBanner } from '../../utils/scores.js';
+import { initCRT } from '../../utils/crt-effect.js';
+initCRT();
 
 /* ── CANVAS SETUP ── */
 const canvas = document.getElementById('canvas');

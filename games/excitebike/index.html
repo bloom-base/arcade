@@ -11,8 +11,7 @@
 body{background:#0a0a0a;color:#fafafa;font-family:'Press Start 2P',monospace;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   min-height:100vh;overflow:hidden;user-select:none}
-body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
-  background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(0,0,0,0.07) 3px,rgba(0,0,0,0.07) 4px)}
+/* CRT effect is now applied by utils/crt-effect.js */
 
 .back-btn{position:fixed;top:1.25rem;left:1.25rem;color:#888;text-decoration:none;
   font-family:'Press Start 2P',monospace;font-size:.65rem;z-index:100;
@@ -91,6 +90,7 @@ canvas{border:2px solid #333;border-radius:4px;image-rendering:pixelated;
 <script type="module">
 import { getDifficulty } from '../../utils/difficulty.js';
 import { saveScore, playHighScoreChime, showHighScoreBanner } from '../../utils/scores.js';
+import { initCRT } from '../../utils/crt-effect.js'; initCRT();
 
 /* ── Audio ──────────────────────────────────────────── */
 let muted = false;

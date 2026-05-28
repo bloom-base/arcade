@@ -26,18 +26,7 @@
             padding: 3.5rem 1rem 1rem;
         }
 
-        body::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background: repeating-linear-gradient(
-                to bottom,
-                transparent 0, transparent 3px,
-                rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
-            );
-            pointer-events: none;
-            z-index: 100;
-        }
+        /* CRT effect is now applied by utils/crt-effect.js */
 
         /* ── Fixed buttons ── */
         .back-btn {
@@ -401,6 +390,7 @@
     </div>
 
     <script type="module">
+    import { initCRT } from '../../utils/crt-effect.js'; initCRT();
     /* ── Audio ───────────────────────────────────────────── */
     let muted = false;
     let audioCtx = null;
