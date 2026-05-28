@@ -25,18 +25,7 @@
             padding: 3.5rem 0.5rem 1rem;
         }
 
-        body::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background: repeating-linear-gradient(
-                to bottom,
-                transparent 0, transparent 3px,
-                rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
-            );
-            pointer-events: none;
-            z-index: 100;
-        }
+        /* CRT effect is now applied by utils/crt-effect.js */
 
         /* ── Fixed buttons ── */
         .back-btn {
@@ -331,6 +320,7 @@
 import { isMuted, toggleMute } from '../../utils/audio.js';
 import { getDifficulty } from '../../utils/difficulty.js';
 import { saveScore, playHighScoreChime, showHighScoreBanner } from '../../utils/scores.js';
+import { initCRT } from '../../utils/crt-effect.js'; initCRT();
 
 /* ══════════════════════════════════════════════════════════
    Word Lists

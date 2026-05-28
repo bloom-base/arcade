@@ -28,9 +28,7 @@ button.mute-btn.off{color:#555;border-color:#333}
 #overlay .btn-menu{background:none;border-color:#555;color:#888}
 #overlay .btn-menu:hover{border-color:#aaa;color:#fff}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-/* CRT scanlines */
-body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:200;
-background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px)}
+/* CRT effect is now applied by utils/crt-effect.js */
 </style>
 </head>
 <body>
@@ -48,6 +46,7 @@ background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0
 <script type="module">
 import { getDifficulty } from '../../utils/difficulty.js';
 import { saveScore, showHighScoreBanner, playHighScoreChime } from '../../utils/scores.js';
+import { initCRT } from '../../utils/crt-effect.js'; initCRT();
 
 /* ── Audio ──────────────────────────────────────────── */
 let muted = localStorage.getItem('arcade_sound') === 'off';

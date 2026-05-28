@@ -141,19 +141,7 @@
             pointer-events: auto;
         }
 
-        /* CRT scanline overlay */
-        #game-screen::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background: repeating-linear-gradient(
-                to bottom,
-                transparent 0,   transparent 3px,
-                rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
-            );
-            pointer-events: none;
-            z-index: 100;
-        }
+        /* CRT effect is now applied by utils/crt-effect.js */
 
         /* Back button */
         .back-btn {
@@ -196,6 +184,30 @@
         .sound-toggle.muted .sound-icon {
             color: #555;
             text-decoration: line-through;
+        }
+
+        /* ── CRT toggle ──────────────────────────────────────── */
+        .crt-toggle {
+            position: fixed;
+            top: 1.25rem;
+            right: 4rem;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.45rem;
+            color: #a78bfa;
+            background: transparent;
+            border: 1px solid #2a2a2a;
+            width: 2.2rem;
+            height: 2.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+            z-index: 50;
+        }
+        .crt-toggle:hover { border-color: #555; }
+        .crt-toggle.off {
+            color: #555;
         }
 
         .game-screen-content {
@@ -521,6 +533,9 @@
 <!-- ── Screen 2 : Game Selection ──────────────────────────── -->
 <div id="game-screen" class="screen">
     <button class="back-btn" id="backBtn" aria-label="Back to difficulty selection">← BACK</button>
+    <button class="crt-toggle" id="crtToggle" aria-label="Toggle CRT scan-line effect">
+        <span id="crtIcon">CRT</span>
+    </button>
     <button class="sound-toggle" id="soundToggle" aria-label="Toggle sound">
         <span class="sound-icon" id="soundIcon">♪</span>
     </button>
@@ -553,6 +568,8 @@
 import { getDifficulty, setDifficulty } from './utils/difficulty.js';
 import { getAllScores, getScores, getTopScores, clearAllScores } from './utils/scores.js';
 import { isMuted, toggleMute, playHover, playSelect, playBoop, playConfirm } from './utils/audio.js';
+import { initCRT, isCRTEnabled, toggleCRT } from './utils/crt-effect.js';
+initCRT();
 
 /* ── Pixel-art SVG renderer ──────────────────────────────────
    pixels: Array of [row, col, color]
@@ -1337,6 +1354,20 @@ soundToggle.addEventListener('click', () => {
     toggleMute();
     updateSoundIcon();
     if (!isMuted()) playBoop();   // audible feedback when unmuting
+});
+
+/* ── CRT toggle ──────────────────────────────────────── */
+const crtToggle = document.getElementById('crtToggle');
+
+function updateCRTIcon() {
+    crtToggle.classList.toggle('off', !isCRTEnabled());
+}
+updateCRTIcon();
+
+crtToggle.addEventListener('click', () => {
+    toggleCRT();
+    updateCRTIcon();
+    if (!isMuted()) playBoop();
 });
 
 /* ── Wire up sound effects ────────────────────────────── */

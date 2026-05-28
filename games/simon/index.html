@@ -21,19 +21,7 @@
       overflow: hidden;
     }
 
-    /* CRT scanlines */
-    body::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent 0px, transparent 2px,
-        rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px
-      );
-      pointer-events: none;
-      z-index: 900;
-    }
+        /* CRT effect is now applied by utils/crt-effect.js */
 
     /* ── Nav buttons ───────────────────────────── */
     .back-btn {
@@ -404,6 +392,7 @@
   <script type="module">
     import { getDifficulty } from '../../utils/difficulty.js';
     import { saveScore, playHighScoreChime, showHighScoreBanner } from '../../utils/scores.js';
+    import { initCRT } from '../../utils/crt-effect.js'; initCRT();
 
     /* ── Audio ─────────────────────────────────────────────────────────── */
     let audioCtx = null;

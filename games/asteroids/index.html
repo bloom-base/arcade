@@ -10,7 +10,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0a0a;color:#fafafa;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Press Start 2P',monospace;overflow:hidden;user-select:none}
-body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(0,0,0,0.07) 3px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:100}
+/* CRT effect is now applied by utils/crt-effect.js */
 
 .back-btn{position:fixed;top:1.25rem;left:1.25rem;font-family:'Press Start 2P',monospace;font-size:.5rem;color:#444;text-decoration:none;background:transparent;border:1px solid #2a2a2a;padding:.5rem .875rem;cursor:pointer;z-index:50;transition:color .15s,border-color .15s}
 .back-btn:hover{color:#0ff;border-color:#0ff}
@@ -92,6 +92,7 @@ canvas{display:block;image-rendering:pixelated;border:1px solid #1a1a1a;border-r
 
 <script type="module">
 import { saveScore, showHighScoreBanner, playHighScoreChime } from '../../utils/scores.js';
+import { initCRT } from '../../utils/crt-effect.js'; initCRT();
 
 /* ── Canvas setup ─────────────────────────────────────── */
 const canvas = document.getElementById('canvas');
