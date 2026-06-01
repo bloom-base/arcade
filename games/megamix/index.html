@@ -47,6 +47,7 @@ button.mute-btn.off{color:#555;border-color:#333}
 import { getDifficulty } from '../../utils/difficulty.js';
 import { saveScore, showHighScoreBanner, playHighScoreChime } from '../../utils/scores.js';
 import { initCRT } from '../../utils/crt-effect.js'; initCRT();
+import { initBezel } from '../../utils/arcade-bezel.js'; initBezel();
 
 /* ── Audio ──────────────────────────────────────────── */
 let muted = localStorage.getItem('arcade_sound') === 'off';
