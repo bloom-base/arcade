@@ -569,6 +569,8 @@ import { getDifficulty, setDifficulty } from './utils/difficulty.js';
 import { getAllScores, getScores, getTopScores, clearAllScores } from './utils/scores.js';
 import { isMuted, toggleMute, playHover, playSelect, playBoop, playConfirm } from './utils/audio.js';
 import { initCRT, isCRTEnabled, toggleCRT } from './utils/crt-effect.js';
+import { initBoot } from './utils/boot-sequence.js';
+await initBoot();
 initCRT();
 
 /* ── Pixel-art SVG renderer ──────────────────────────────────
