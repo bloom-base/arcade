@@ -129,3 +129,20 @@ export function playConfirm() {
     tone(659, 0.05, 'square', 0.10, 0.05);
     tone(784, 0.07, 'square', 0.10, 0.10);
 }
+
+/**
+ * Coin insert — classic arcade "cha-ching" when starting a game.
+ * Metallic clink followed by a bright rising chime, ~350ms total.
+ */
+export function playCoin() {
+    // Metallic clink (high-freq noise-like hit)
+    tone(1800, 0.04, 'square',   0.14);
+    tone(2400, 0.03, 'square',   0.10, 0.01);
+    // Coin rattling down the slot
+    tone(1200, 0.03, 'triangle', 0.08, 0.06);
+    tone(900,  0.03, 'triangle', 0.06, 0.09);
+    // Bright "accepted" chime
+    tone(880,  0.08, 'square',   0.12, 0.14);
+    tone(1175, 0.10, 'square',   0.12, 0.20);
+    tone(1760, 0.12, 'square',   0.10, 0.28);
+}
