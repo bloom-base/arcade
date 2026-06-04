@@ -570,6 +570,7 @@ import { getAllScores, getScores, getTopScores, clearAllScores } from './utils/s
 import { isMuted, toggleMute, playHover, playSelect, playBoop, playConfirm } from './utils/audio.js';
 import { initCRT, isCRTEnabled, toggleCRT } from './utils/crt-effect.js';
 import { initBoot } from './utils/boot-sequence.js';
+import { playCoinAnimation } from './utils/coin-slot.js';
 await initBoot();
 initCRT();
 
@@ -1376,7 +1377,13 @@ crtToggle.addEventListener('click', () => {
 function attachCardSounds() {
     document.querySelectorAll('.game-card').forEach(card => {
         card.addEventListener('mouseenter', playHover);
-        card.addEventListener('click', playSelect);
+        card.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const href = card.getAttribute('href');
+            if (!href) return;
+            await playCoinAnimation();
+            window.location.href = href;
+        });
     });
 }
 
