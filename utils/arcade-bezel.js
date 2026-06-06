@@ -101,11 +101,12 @@ const CSS = `
 .cab-marquee {
   width: 100%;
   text-align: center;
-  padding: 0.6rem 1.2rem 0.35rem;
+  padding: 0.75rem 1.2rem 0.5rem;
   border-radius: var(--bezel-radius) var(--bezel-radius) 0 0;
   background: linear-gradient(
     180deg,
     #1e0a3c 0%,
+    #120828 50%,
     #0d0d2b 100%
   );
   border-bottom: 3px solid #000;
@@ -116,31 +117,122 @@ const CSS = `
   overflow: hidden;
 }
 
-/* rainbow backlight glow behind the title text */
+/* animated backlight glow that shifts behind the title */
 .cab-marquee::before {
   content: '';
   position: absolute;
   inset: 0;
   background: radial-gradient(
-    ellipse 70% 100% at 50% 80%,
-    rgba(168,85,247,0.25) 0%,
-    rgba(236,72,153,0.12) 40%,
-    transparent 70%
+    ellipse 80% 120% at 50% 80%,
+    rgba(255,255,0,0.15) 0%,
+    rgba(255,0,255,0.12) 30%,
+    rgba(0,255,255,0.08) 60%,
+    transparent 80%
   );
+  animation: _marquee_glow 4s ease-in-out infinite alternate;
   pointer-events: none;
+}
+
+/* chaser light strip along top edge */
+.cab-marquee::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    #ffff00 0px, #ffff00 4px,
+    transparent 4px, transparent 12px,
+    #ff00ff 12px, #ff00ff 16px,
+    transparent 16px, transparent 24px,
+    #00ffff 24px, #00ffff 28px,
+    transparent 28px, transparent 36px
+  );
+  background-size: 36px 2px;
+  animation: _marquee_chase 1.2s linear infinite;
+  pointer-events: none;
+  opacity: 0.8;
 }
 
 .cab-marquee-title {
   font-family: 'Press Start 2P', monospace;
   font-size: clamp(0.55rem, 2.5vw, 0.85rem);
   letter-spacing: 0.3em;
-  color: #f0abfc;
-  text-shadow:
-    0 0 6px  rgba(240,171,252,0.7),
-    0 0 20px rgba(168,85,247,0.5);
+  color: #fff;
   position: relative;
   z-index: 1;
   text-transform: uppercase;
+  /* color-cycling neon glow */
+  animation: _marquee_pulse 3s ease-in-out infinite;
+}
+
+/* decorative diamond separators flanking the title */
+.cab-marquee-stars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.3rem, 1.5vw, 0.6rem);
+  position: relative;
+  z-index: 1;
+}
+.cab-marquee-star {
+  display: inline-block;
+  font-size: clamp(0.35rem, 1.5vw, 0.55rem);
+  animation: _marquee_star 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.cab-marquee-star:nth-child(1) { color: #ffff00; animation-delay: 0s; }
+.cab-marquee-star:nth-child(2) { color: #ff00ff; animation-delay: 0.3s; }
+.cab-marquee-star:nth-child(4) { color: #ff00ff; animation-delay: 0.3s; }
+.cab-marquee-star:nth-child(5) { color: #00ffff; animation-delay: 0.6s; }
+
+/* ── Marquee animations ────────────────────────── */
+@keyframes _marquee_pulse {
+  0%   {
+    color: #ffff00;
+    text-shadow:
+      0 0 8px  rgba(255,255,0,0.9),
+      0 0 20px rgba(255,255,0,0.4),
+      0 0 40px rgba(255,255,0,0.15);
+  }
+  33%  {
+    color: #ff66ff;
+    text-shadow:
+      0 0 8px  rgba(255,0,255,0.9),
+      0 0 20px rgba(255,0,255,0.4),
+      0 0 40px rgba(255,0,255,0.15);
+  }
+  66%  {
+    color: #00ffff;
+    text-shadow:
+      0 0 8px  rgba(0,255,255,0.9),
+      0 0 20px rgba(0,255,255,0.4),
+      0 0 40px rgba(0,255,255,0.15);
+  }
+  100% {
+    color: #ffff00;
+    text-shadow:
+      0 0 8px  rgba(255,255,0,0.9),
+      0 0 20px rgba(255,255,0,0.4),
+      0 0 40px rgba(255,255,0,0.15);
+  }
+}
+
+@keyframes _marquee_glow {
+  0%   { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 1;   transform: scale(1.05); }
+}
+
+@keyframes _marquee_chase {
+  0%   { background-position: 0 0; }
+  100% { background-position: 36px 0; }
+}
+
+@keyframes _marquee_star {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.3; transform: scale(0.7); }
 }
 
 /* ── Screen inset ───────────────────────────────── */
@@ -201,10 +293,18 @@ const CSS = `
 .cab-coin-label {
   font-family: 'Press Start 2P', monospace;
   font-size: clamp(0.3rem, 1.2vw, 0.42rem);
-  color: #888;
+  color: #ffff00;
   letter-spacing: 0.15em;
-  text-shadow: 0 1px 0 #000;
+  text-shadow:
+    0 0 4px rgba(255,255,0,0.6),
+    0 1px 0 #000;
   white-space: nowrap;
+  animation: _coin_blink 1.6s step-end infinite;
+}
+
+@keyframes _coin_blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
 }
 
 /* blinking dot on the coin area */
@@ -228,7 +328,7 @@ const CSS = `
     --bezel-radius: 12px;
     --bezel-border: 4px;
   }
-  .cab-marquee { padding: 0.4rem 0.6rem 0.25rem; }
+  .cab-marquee { padding: 0.5rem 0.6rem 0.3rem; }
   .cab-coin    { padding: 0.3rem 0.6rem; }
   .cab-bezel::before, .cab-bezel::after,
   .cab-coin::before,  .cab-coin::after {
@@ -279,7 +379,14 @@ export function initBezel(opts = {}) {
   // marquee
   const marquee = document.createElement('div');
   marquee.className = 'cab-marquee';
-  marquee.innerHTML = `<span class="cab-marquee-title">${title}</span>`;
+  marquee.innerHTML = `
+    <span class="cab-marquee-stars">
+      <span class="cab-marquee-star">◆</span>
+      <span class="cab-marquee-star">◆</span>
+      <span class="cab-marquee-title">${title}</span>
+      <span class="cab-marquee-star">◆</span>
+      <span class="cab-marquee-star">◆</span>
+    </span>`;
 
   // screen inset (will hold the original #game-wrap contents)
   const screen = document.createElement('div');
