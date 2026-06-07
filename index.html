@@ -571,6 +571,7 @@ import { isMuted, toggleMute, playHover, playSelect, playBoop, playConfirm } fro
 import { initCRT, isCRTEnabled, toggleCRT } from './utils/crt-effect.js';
 import { initBoot } from './utils/boot-sequence.js';
 import { playCoinAnimation } from './utils/coin-slot.js';
+import { playCabinetDoors } from './utils/cabinet-doors.js';
 await initBoot();
 initCRT();
 
@@ -1382,6 +1383,7 @@ function attachCardSounds() {
             const href = card.getAttribute('href');
             if (!href) return;
             await playCoinAnimation();
+            await playCabinetDoors();
             window.location.href = href;
         });
     });
