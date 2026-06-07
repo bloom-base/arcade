@@ -146,3 +146,19 @@ export function playCoin() {
     tone(1175, 0.10, 'square',   0.12, 0.20);
     tone(1760, 0.12, 'square',   0.10, 0.28);
 }
+
+/**
+ * Door creak — low grinding sweep as cabinet doors swing open.
+ * Uses sawtooth for a rough, mechanical texture, ~400ms total.
+ */
+export function playCreak() {
+    // Low grinding sweep — sawtooth for rough texture
+    tone(80,  0.18, 'sawtooth', 0.07);
+    tone(95,  0.14, 'sawtooth', 0.06, 0.04);
+    tone(110, 0.12, 'sawtooth', 0.05, 0.10);
+    // High-end hinge squeak
+    tone(600, 0.06, 'square',   0.03, 0.06);
+    tone(520, 0.08, 'square',   0.03, 0.14);
+    // Thud as doors reach open position
+    tone(55,  0.10, 'triangle', 0.08, 0.30);
+}
