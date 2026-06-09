@@ -11,7 +11,8 @@
  *   2. Adds a lit marquee header showing the game title.
  *   3. Adds a decorative coin-slot / insert-coin footer strip.
  *   4. Applies a beveled 3-D border with rounded corners.
- *   5. Fully responsive — shrinks gracefully on small screens.
+ *   5. Adds a glass reflection / light glint that sweeps across the screen.
+ *   6. Fully responsive — shrinks gracefully on small screens.
  *
  * The bezel sits *behind* the CRT overlay (z-index 100) and game-over
  * overlay (z-index 200), so it never interferes with gameplay.
@@ -237,6 +238,7 @@ const CSS = `
 
 /* ── Screen inset ───────────────────────────────── */
 .cab-screen {
+  position: relative;
   background: #000;
   border: 3px solid #111;
   border-top-color: #000;
@@ -322,6 +324,64 @@ const CSS = `
   50%      { opacity: 0.2; }
 }
 
+/* ── Glass reflection / light glint ────────────── */
+.cab-glass-glint {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 2px;
+}
+
+.cab-glass-glint::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: -120%;
+  width: 60%;
+  height: 140%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 35%,
+    rgba(255,255,255,0.07) 40%,
+    rgba(255,255,255,0.13) 45%,
+    rgba(255,255,255,0.10) 48%,
+    rgba(255,255,255,0.04) 52%,
+    transparent 55%,
+    transparent 100%
+  );
+  transform: skewX(-15deg);
+  animation: _glint_sweep 8s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+/* faint permanent curved-glass sheen at top-left corner */
+.cab-glass-glint::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(
+    170deg,
+    rgba(255,255,255,0.06) 0%,
+    rgba(255,255,255,0.02) 25%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+@keyframes _glint_sweep {
+  0%   { left: -120%; opacity: 0; }
+  5%   { opacity: 1; }
+  42%  { left: 160%; opacity: 1; }
+  47%  { opacity: 0; }
+  100% { left: 160%; opacity: 0; }
+}
+
 /* ── Responsive ─────────────────────────────────── */
 @media (max-width: 500px) {
   .cab-bezel {
@@ -404,10 +464,15 @@ export function initBezel(opts = {}) {
     <span class="cab-coin-led"></span>
   `;
 
+  // glass reflection overlay (sits on top of game content inside screen)
+  const glint = document.createElement('div');
+  glint.className = 'cab-glass-glint';
+
   /* ── re-parent ────────────────────────── */
   // Insert bezel where #game-wrap is, then move game-wrap inside screen.
   wrap.parentNode.insertBefore(bezel, wrap);
   screen.appendChild(wrap);
+  screen.appendChild(glint);
   bezel.appendChild(marquee);
   bezel.appendChild(screen);
   bezel.appendChild(coin);
