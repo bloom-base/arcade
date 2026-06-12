@@ -22,11 +22,13 @@
  */
 
 import { saveScore, getScores, playHighScoreChime, showHighScoreBanner } from './scores.js';
+import { promptForName } from './name-prompt.js';
 
 /* ── Constants ────────────────────────────────────────── */
 
-const OVERLAY_ID  = '_go_overlay';
-const STYLE_ID    = '_go_style';
+const OVERLAY_ID   = '_go_overlay';
+const STYLE_ID     = '_go_style';
+const MAX_PER_GAME = 5;
 
 const DIFF_COLORS = {
     easy:   '#22c55e',
@@ -259,7 +261,7 @@ function doRestart() {
  * @param {string}   [opts.subtitle]  Extra line below title
  * @param {boolean}  [opts.muted]     Suppress high-score chime
  */
-export function showGameOver(opts = {}) {
+export async function showGameOver(opts = {}) {
     const {
         score      = 0,
         game       = '',
@@ -272,16 +274,24 @@ export function showGameOver(opts = {}) {
 
     injectStyle();
 
-    /* ── Save score & determine rank ─────────────────── */
+    /* ── Determine if this is a high score ────────────── */
     let rank      = 0;
     let bestScore = 0;
+    let playerName = 'Anonymous';
 
     if (game && score > 0) {
-        // Check existing best before saving
         const existing = getScores(game);
         bestScore = existing.length > 0 ? existing[0].score : 0;
 
-        rank = saveScore(game, score, difficulty);
+        // Check if the score would make the top-5 (without saving yet)
+        const wouldRank = _wouldRank(existing, score);
+
+        if (wouldRank > 0) {
+            // Prompt for name before saving
+            playerName = await promptForName(wouldRank);
+        }
+
+        rank = saveScore(game, score, difficulty, playerName);
 
         if (rank > 0) {
             playHighScoreChime(muted);
@@ -342,6 +352,20 @@ export function showGameOver(opts = {}) {
             overlay.classList.add('show');
         });
     });
+}
+
+/**
+ * Check what rank a score would achieve without actually saving it.
+ * @param {{ score:number }[]} existing – current top scores (sorted desc)
+ * @param {number} score – the new score to check
+ * @returns {number} 1-based rank if it would make top-5, otherwise 0
+ */
+function _wouldRank(existing, score) {
+    const scores = existing.map(e => e.score);
+    scores.push(score);
+    scores.sort((a, b) => b - a);
+    const idx = scores.indexOf(score);
+    return idx < MAX_PER_GAME ? idx + 1 : 0;
 }
 
 /**

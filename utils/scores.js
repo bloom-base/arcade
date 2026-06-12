@@ -101,14 +101,17 @@ export function getTopScores(limit = 5) {
  * @param {string} game
  * @param {number} score  – ignored if ≤ 0
  * @param {string} difficulty – 'easy' | 'normal' | 'hard'
+ * @param {string} [name]  – player name (defaults to 'Anonymous')
  * @returns {number} 1-based rank if the score made the top-5, otherwise 0
  */
-export function saveScore(game, score, difficulty) {
+export function saveScore(game, score, difficulty, name) {
     if (!score || score <= 0) return 0;
+
+    const playerName = (name && name.trim()) ? name.trim().slice(0, 10) : 'Anonymous';
 
     const all     = load();
     const entries = all[game] || [];
-    const entry   = { score, difficulty, timestamp: Date.now() };
+    const entry   = { score, difficulty, timestamp: Date.now(), name: playerName };
 
     entries.push(entry);
     entries.sort((a, b) => b.score - a.score);

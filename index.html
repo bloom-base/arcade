@@ -452,7 +452,7 @@
         }
         .lb-entry {
             display: grid;
-            grid-template-columns: 1.2rem 4.2rem 1.6rem 1fr auto;
+            grid-template-columns: 1.2rem 3.5rem 4.2rem 1.6rem 1fr auto;
             align-items: center;
             gap: 0.45rem;
             padding: 0.4rem 0;
@@ -464,6 +464,16 @@
             font-size: 0.34rem;
             color: #facc15;
             text-shadow: 0 0 4px rgba(250,204,21,0.3);
+        }
+        .lb-name {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.32rem;
+            color: #e879f9;
+            letter-spacing: 0.04em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-shadow: 0 0 6px rgba(232,121,249,0.3);
         }
         .lb-game {
             font-family: 'Press Start 2P', monospace;
@@ -1321,6 +1331,7 @@ function renderLeaderboard() {
     body.innerHTML = top.map((e, i) => `
         <div class="lb-entry">
             <span class="lb-rank">#${i + 1}</span>
+            <span class="lb-name" title="${e.name || 'Anonymous'}">${e.name || 'Anonymous'}</span>
             <span class="lb-game" style="color:${GAME_COLOR[e.game] || '#666'}">${e.game.toUpperCase()}</span>
             <span class="lb-diff ${e.difficulty}" title="${e.difficulty}">${DIFF_LABEL[e.difficulty] || '?'}</span>
             <span class="lb-score">${e.score.toLocaleString()}</span>
