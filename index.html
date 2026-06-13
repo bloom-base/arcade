@@ -238,6 +238,7 @@
         .diff-badge.easy   { color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
         .diff-badge.normal { color: #a3a3a3; border: 1px solid #2a2a2a; }
         .diff-badge.hard   { color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+        #tickerMount { margin-top: 1rem; }
 
         /* Game card grid */
         .game-grid {
@@ -554,6 +555,7 @@
         <div class="game-header">
             <div class="game-screen-title">CHOOSE YOUR GAME</div>
             <div class="diff-badge" id="diffBadge">NORMAL</div>
+            <div id="tickerMount"></div>
         </div>
         <div class="game-grid" id="gameGrid">
             <!-- Injected by JS -->
@@ -582,6 +584,7 @@ import { initCRT, isCRTEnabled, toggleCRT } from './utils/crt-effect.js';
 import { initBoot } from './utils/boot-sequence.js';
 import { playCoinAnimation } from './utils/coin-slot.js';
 import { playCabinetDoors } from './utils/cabinet-doors.js';
+import { createTicker, startTicker, setGame, clearGame } from './utils/marquee-ticker.js';
 await initBoot();
 initCRT();
 
@@ -1388,7 +1391,14 @@ crtToggle.addEventListener('click', () => {
 /* ── Wire up sound effects ────────────────────────────── */
 function attachCardSounds() {
     document.querySelectorAll('.game-card').forEach(card => {
-        card.addEventListener('mouseenter', playHover);
+        card.addEventListener('mouseenter', () => {
+            playHover();
+            /* Update ticker to show tips for hovered game */
+            const href = card.getAttribute('href') || '';
+            const game = GAMES.find(g => g.href === href);
+            if (game) setGame(game.key);
+        });
+        card.addEventListener('mouseleave', () => clearGame());
         card.addEventListener('click', async (e) => {
             e.preventDefault();
             const href = card.getAttribute('href');
@@ -1418,6 +1428,15 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+/* ── Marquee ticker ───────────────────────────────────── */
+const tickerEl = createTicker();
+document.getElementById('tickerMount').appendChild(tickerEl);
+
+/* Start ticker once game screen is visible (needs layout) */
+function ensureTickerStarted() {
+    if (gameScreen.classList.contains('enter')) startTicker();
+}
+
 /* ── Boot ─────────────────────────────────────────────── */
 renderCards();
 attachCardSounds();
@@ -1429,7 +1448,14 @@ if (location.hash === '#games') {
     diffScreen.classList.add('exit');
     gameScreen.classList.add('enter');
     history.replaceState(null, '', location.pathname);
+    /* Ticker needs a frame for layout before measuring */
+    requestAnimationFrame(() => startTicker());
 }
+
+/* Start ticker when entering game screen via play button */
+document.getElementById('playBtn').addEventListener('click', () => {
+    requestAnimationFrame(() => startTicker());
+}, true);
 </script>
 </body>
 </html>
