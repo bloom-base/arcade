@@ -148,6 +148,16 @@ export function playCoin() {
 }
 
 /**
+ * Credit ding — satisfying bell chime when a credit is earned.
+ * Bright two-note bell with a short sustain, ~250ms total.
+ */
+export function playDing() {
+    tone(1320, 0.08, 'square',   0.13);
+    tone(1760, 0.12, 'triangle', 0.11, 0.07);
+    tone(2640, 0.14, 'triangle', 0.06, 0.12);
+}
+
+/**
  * Door creak — low grinding sweep as cabinet doors swing open.
  * Uses sawtooth for a rough, mechanical texture, ~400ms total.
  */
