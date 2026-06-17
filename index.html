@@ -508,6 +508,87 @@
             text-align: right;
             min-width: 2.8rem;
         }
+        /* ── Credit counter 7-segment display ──────── */
+        .credit-display {
+            display: flex;
+            justify-content: center;
+            margin-top: 1.25rem;
+        }
+        .credit-display.credit-bump .credit-panel {
+            animation: _credit_bump 0.35s ease-out;
+        }
+        @keyframes _credit_bump {
+            0%   { transform: scale(1); }
+            40%  { transform: scale(1.12); }
+            100% { transform: scale(1); }
+        }
+        .credit-panel {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            background: #0c0c0c;
+            border: 2px solid #2a2a2a;
+            border-radius: 4px;
+            padding: 0.45rem 0.9rem;
+            box-shadow: inset 0 0 12px rgba(0,0,0,0.8), 0 0 6px rgba(0,255,0,0.08);
+            position: relative;
+        }
+        /* Subtle inner bezel highlight */
+        .credit-panel::before {
+            content: '';
+            position: absolute;
+            inset: 1px;
+            border: 1px solid #1a1a1a;
+            border-radius: 3px;
+            pointer-events: none;
+        }
+        .credit-label {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.4rem;
+            color: #ef4444;
+            letter-spacing: 0.2em;
+            text-shadow: 0 0 8px rgba(239,68,68,0.5);
+        }
+        .credit-digits {
+            display: flex;
+            gap: 4px;
+        }
+
+        /* ── 7-segment digit ─────────────────────────── */
+        .seg-digit {
+            position: relative;
+            width: 18px;
+            height: 30px;
+        }
+        .seg {
+            position: absolute;
+            background: #1a1a1a;
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+        .seg.on {
+            background: #4ade80;
+            box-shadow: 0 0 6px rgba(74,222,128,0.7), 0 0 2px rgba(74,222,128,0.9);
+        }
+        /* Horizontal segments (a, d, g) */
+        .seg-a, .seg-d, .seg-g {
+            width: 12px;
+            height: 2px;
+            left: 3px;
+            border-radius: 1px;
+        }
+        .seg-a { top: 0; }
+        .seg-g { top: 14px; }
+        .seg-d { top: 28px; }
+        /* Vertical segments (b, c, e, f) */
+        .seg-b, .seg-c, .seg-e, .seg-f {
+            width: 2px;
+            height: 12px;
+            border-radius: 1px;
+        }
+        .seg-f { left: 1px; top: 2px; }
+        .seg-b { right: 1px; top: 2px; }
+        .seg-e { left: 1px; top: 16px; }
+        .seg-c { right: 1px; top: 16px; }
     </style>
 </head>
 <body>
@@ -579,12 +660,13 @@
 <script type="module">
 import { getDifficulty, setDifficulty } from './utils/difficulty.js';
 import { getAllScores, getScores, getTopScores, clearAllScores } from './utils/scores.js';
-import { isMuted, toggleMute, playHover, playSelect, playBoop, playConfirm } from './utils/audio.js';
+import { isMuted, toggleMute, playHover, playSelect, playBoop, playConfirm, playDing } from './utils/audio.js';
 import { initCRT, isCRTEnabled, toggleCRT } from './utils/crt-effect.js';
 import { initBoot } from './utils/boot-sequence.js';
 import { playCoinAnimation } from './utils/coin-slot.js';
 import { playCabinetDoors } from './utils/cabinet-doors.js';
 import { createTicker, startTicker, setGame, clearGame } from './utils/marquee-ticker.js';
+import { getCredits, addCredit, useCredit, createCreditDisplay, snapshotScores, hasNewScores } from './utils/credits.js';
 await initBoot();
 initCRT();
 
@@ -1403,6 +1485,8 @@ function attachCardSounds() {
             e.preventDefault();
             const href = card.getAttribute('href');
             if (!href) return;
+            useCredit();
+            snapshotScores();
             await playCoinAnimation();
             await playCabinetDoors();
             window.location.href = href;
@@ -1422,6 +1506,12 @@ document.getElementById('footerResetBtn').addEventListener('click', playBoop);
 /* ── Auto-update on return from game ──────────────────── */
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && gameScreen.classList.contains('enter')) {
+        /* Award a credit if the player scored in the game they just played */
+        if (hasNewScores()) {
+            addCredit();
+            playDing();
+            snapshotScores();   // update snapshot so next return doesn't double-award
+        }
         renderLeaderboard();
         renderCards();
         attachCardSounds();
@@ -1431,6 +1521,10 @@ document.addEventListener('visibilitychange', () => {
 /* ── Marquee ticker ───────────────────────────────────── */
 const tickerEl = createTicker();
 document.getElementById('tickerMount').appendChild(tickerEl);
+
+/* ── Credit counter ──────────────────────────────────── */
+const creditEl = createCreditDisplay();
+document.querySelector('.game-header').appendChild(creditEl);
 
 /* Start ticker once game screen is visible (needs layout) */
 function ensureTickerStarted() {
@@ -1442,6 +1536,7 @@ renderCards();
 attachCardSounds();
 initDifficulty();
 renderLeaderboard();
+snapshotScores();    // baseline for detecting new scores on return
 
 // If returning from a game, skip directly to game selection screen
 if (location.hash === '#games') {
